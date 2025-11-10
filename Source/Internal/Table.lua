@@ -5,7 +5,7 @@
 -- ------------------------------------------------------------------------------ --
 
 local LibTSMDatabase = select(2, ...).LibTSMDatabase
-local DatabaseTable = LibTSMDatabase:DefineClassType("DatabaseTable")
+local DatabaseTable = LibTSMDatabase:DefineInternalClassType("DatabaseTable")
 local Util = LibTSMDatabase:Include("Database.Util")
 local DatabaseQuery = LibTSMDatabase:IncludeClassType("DatabaseQuery")
 local ContextManager = LibTSMDatabase:From("LibTSMUtil"):Include("BaseType.ContextManager")

@@ -5,7 +5,7 @@
 -- ------------------------------------------------------------------------------ --
 
 local LibTSMDatabase = select(2, ...).LibTSMDatabase
-local DatabaseQuery = LibTSMDatabase:DefineClassType("DatabaseQuery")
+local DatabaseQuery = LibTSMDatabase:DefineInternalClassType("DatabaseQuery")
 local Util = LibTSMDatabase:Include("Database.Util")
 local QueryClause = LibTSMDatabase:IncludeClassType("DatabaseQueryClause")
 local ObjectPool = LibTSMDatabase:From("LibTSMUtil"):IncludeClassType("ObjectPool")
