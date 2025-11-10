@@ -5,8 +5,8 @@ local Database = LibTSMDatabase:Include("Database")
 local SmartMap = LibTSMDatabase:From("LibTSMUtil"):IncludeClassType("SmartMap")
 local EnumType = LibTSMDatabase:From("LibTSMUtil"):Include("BaseType.EnumType")
 local Hash = LibTSMDatabase:From("LibTSMUtil"):Include("Util.Hash")
-local RESULT_STATE = Locals["LibTSMDatabase.Type.Query"].RESULT_STATE
-local OPTIMIZAITON_RESULT = Locals["LibTSMDatabase.Type.Query"].OPTIMIZAITON_RESULT
+local RESULT_STATE = Locals["LibTSMDatabase.Internal.Query"].RESULT_STATE
+local OPTIMIZAITON_RESULT = Locals["LibTSMDatabase.Internal.Query"].OPTIMIZAITON_RESULT
 
 
 
