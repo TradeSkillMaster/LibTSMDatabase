@@ -2,10 +2,10 @@
 ..\FrameXML\UI.xsd">
     <Script file="Source\Core.lua" />
 
-    <Script file="Source\Type\Util.lua" />
-    <Script file="Source\Type\QueryClause.lua" />
-    <Script file="Source\Type\Query.lua" />
-    <Script file="Source\Type\Table.lua" />
-    <Script file="Source\Type\Schema.lua" />
+    <Script file="Source\Internal\Util.lua" />
+    <Script file="Source\Internal\QueryClause.lua" />
+    <Script file="Source\Internal\Query.lua" />
+    <Script file="Source\Internal\Table.lua" />
+    <Script file="Source\Internal\Schema.lua" />
     <Script file="Source\Database.lua" />
 </Ui>

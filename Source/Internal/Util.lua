@@ -5,7 +5,7 @@
 -- ------------------------------------------------------------------------------ --
 
 local LibTSMDatabase = select(2, ...).LibTSMDatabase
-local Util = LibTSMDatabase:Init("Database.Util")
+local Util = LibTSMDatabase:InitInternal("Database.Util")
 local Math = LibTSMDatabase:From("LibTSMUtil"):Include("Lua.Math")
 Util.CONSTANTS = {
 	OTHER_FIELD_QUERY_PARAM = newproxy(false) --[[@as DatabaseQueryParam]],
