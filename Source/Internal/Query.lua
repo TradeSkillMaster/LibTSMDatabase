@@ -1132,11 +1132,12 @@ function DatabaseQuery:UpdateLastOrderBy(field, ascending)
 	return self
 end
 
----Gets a publisher for query result changes.
+---Gets a publisher for query result changes which publishes the query itself.
 ---@return ReactivePublisherSchema
 function DatabaseQuery:Publisher()
 	assert(self._db)
 	return self._stream:Publisher()
+		:ReplaceWith(self)
 end
 
 
