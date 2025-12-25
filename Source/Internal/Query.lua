@@ -141,7 +141,7 @@ function DatabaseQuery.__private:__init()
 	end
 	self._sortValueCache = {}
 	self._resultDependencies = {}
-	self._stream = Reactive.GetStream(function() return nil end)
+	self._stream = nil ---@type ReactiveStream|nil
 end
 
 function DatabaseQuery.__private:_Acquire(db)
@@ -156,7 +156,7 @@ end
 function DatabaseQuery.__private:_Release()
 	assert(not self._autoRelease and not self._autoPause)
 	assert(self._iteratorState == ITERATOR_STATE.IDLE and self._iteratorType == ITERATOR_TYPE.UNOPTIMIZED and self._iteratorIndex == nil)
-	assert(self._stream:GetNumPublishers() == 0)
+	assert(not self._stream)
 	self:_ResetDistinct()
 	self:_ResetJoinsAndVirtualFields()
 	self:ResetOrderBy()
@@ -722,7 +722,7 @@ end
 function DatabaseQuery:AbortableIterator(...)
 	assert(self._iteratorIndex == nil)
 	self:_Execute()
-	assert(not self._updateCallback and self._stream:GetNumPublishers() == 0)
+	assert(not self._updateCallback and not self._stream)
 	self._iteratorState = ITERATOR_STATE.IN_PROGRESS_CAN_ABORT
 	self:_SetIteratorType(...)
 	assert(self._iteratorIndex == nil)
@@ -1136,6 +1136,10 @@ end
 ---@return ReactivePublisherSchema
 function DatabaseQuery:Publisher()
 	assert(self._db)
+	if not self._stream then
+		self._stream = Reactive.GetStream(private.StreamInitialValueFunc)
+			:SetNoPublishersCallback(self:__closure("_HandleNoStreamPublishers"))
+	end
 	return self._stream:Publisher()
 		:ReplaceWith(self)
 end
@@ -1274,7 +1278,7 @@ end
 
 ---@private
 function DatabaseQuery:_DoUpdateCallback(uuid)
-	if not self._updateCallback and self._stream:GetNumPublishers() == 0 then
+	if not self._updateCallback and not self._stream then
 		assert(self._iteratorState == ITERATOR_STATE.IDLE or self._iteratorState == ITERATOR_STATE.PENDING_ABORT)
 		return
 	end
@@ -1320,7 +1324,9 @@ function DatabaseQuery:_DoUpdateCallback(uuid)
 			updatedUUID = localUUID
 		end
 		self._inUpdateCallback = true
-		self._stream:Send(updatedUUID)
+		if self._stream then
+			self._stream:Send(updatedUUID)
+		end
 		if self._updateCallback then
 			self:_updateCallback(updatedUUID, self._updateCallbackContext)
 		end
@@ -1920,6 +1926,12 @@ function DatabaseQuery.__private:_SetIteratorType(...)
 	end
 end
 
+function DatabaseQuery.__private:_HandleNoStreamPublishers()
+	assert(self._stream)
+	self._stream:Release()
+	self._stream = nil
+end
+
 
 
 -- ============================================================================
@@ -2029,4 +2041,8 @@ end
 function private.UUIDDiffIteratorCleanup(context)
 	wipe(context.result)
 	context.inUse = false
+end
+
+function private.StreamInitialValueFunc()
+	return nil
 end
