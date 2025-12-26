@@ -209,9 +209,10 @@ function DatabaseQuery:Release(abortIterator)
 end
 
 ---Adds a virtual field to the query.
+---@generic T: type
 ---@param field string The name of the new virtual field
----@param fieldType string The type of the virtual field
----@param func fun(...: any) A function which takes the arg field(s) and returns the value of the virtual field
+---@param fieldType `T` The type of the virtual field
+---@param func fun(...: any): T A function which takes the arg field(s) and returns the value of the virtual field
 ---@param argField string|string[] The field (or list of fields) to pass into the function
 ---@param defaultValue? any The default value to use if the function returns nil
 ---@return DatabaseQuery
