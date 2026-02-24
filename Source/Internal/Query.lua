@@ -1746,13 +1746,13 @@ function DatabaseQuery:_GetResultRowData(uuid, field)
 		end
 		if joinType == JOIN_TYPE.AGGREGATE_SUM then
 			if not aggregateJoinField or not aggregateJoinQuery then
-				error("Missing aggregate join context: " + tostring(aggregateJoinField) + ", " + tostring(aggregateJoinQuery))
+				error("Missing aggregate join context: "..tostring(aggregateJoinField)..", "..tostring(aggregateJoinQuery))
 			end
 			aggregateJoinQuery:BindParams(self:_GetResultRowData(uuid, joinField))
 			return aggregateJoinQuery:Sum(aggregateJoinField)
 		elseif joinType == JOIN_TYPE.INNER or joinType == JOIN_TYPE.LEFT then
 			if aggregateJoinField or aggregateJoinQuery then
-				error("Unexpected aggregate join context: " + tostring(aggregateJoinField) + ", " + tostring(aggregateJoinQuery))
+				error("Unexpected aggregate join context: "..tostring(aggregateJoinField)..", "..tostring(aggregateJoinQuery))
 			end
 			local foreignUUID = joinDB:_GetUniqueRow(joinForeignField, self:_GetResultRowData(uuid, joinField))
 			if foreignUUID then

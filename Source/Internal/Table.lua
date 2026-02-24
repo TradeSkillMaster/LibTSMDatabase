@@ -561,7 +561,7 @@ function DatabaseTable:BulkInsertNewRowFast7(v1, v2, v3, v4, v5, v6, v7, extraVa
 		error("Bulk insert hasn't been started")
 	elseif self._bulkInsertContext.fastNum ~= 7 then
 		error("Invalid usage of fast insert")
-	elseif v6 == nil or extraValue ~= nil then
+	elseif v7 == nil or extraValue ~= nil then
 		error("Wrong number of values")
 	elseif not self._bulkInsertContext.firstDataIndex then
 		self._bulkInsertContext.firstDataIndex = rowIndex
@@ -600,7 +600,7 @@ function DatabaseTable:BulkInsertNewRowFast9(v1, v2, v3, v4, v5, v6, v7, v8, v9,
 		error("Bulk insert hasn't been started")
 	elseif self._bulkInsertContext.fastNum ~= 9 then
 		error("Invalid usage of fast insert")
-	elseif v8 == nil or extraValue ~= nil then
+	elseif v9 == nil or extraValue ~= nil then
 		error("Wrong number of values")
 	elseif not self._bulkInsertContext.firstDataIndex then
 		self._bulkInsertContext.firstDataIndex = rowIndex
@@ -641,7 +641,7 @@ function DatabaseTable:BulkInsertNewRowFast13(v1, v2, v3, v4, v5, v6, v7, v8, v9
 		error("Bulk insert hasn't been started")
 	elseif self._bulkInsertContext.fastNum ~= 13 then
 		error("Invalid usage of fast insert")
-	elseif v12 == nil or extraValue ~= nil then
+	elseif v13 == nil or extraValue ~= nil then
 		error("Wrong number of values")
 	elseif not self._bulkInsertContext.firstDataIndex then
 		self._bulkInsertContext.firstDataIndex = rowIndex
@@ -722,7 +722,6 @@ function DatabaseTable:BulkInsertNewRowFast15(v1, v2, v3, v4, v5, v6, v7, v8, v9
 	elseif self._bulkInsertContext.fastUnique then
 		error("Invalid unique field num")
 	end
-	return uuid
 end
 
 ---Indicates that a partition should be stored at the current number of rows in the table for optimizations.
