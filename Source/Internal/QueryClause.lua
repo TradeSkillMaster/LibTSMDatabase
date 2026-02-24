@@ -11,7 +11,7 @@ local EnumType = LibTSMDatabase:From("LibTSMUtil"):Include("BaseType.EnumType")
 local ObjectPool = LibTSMDatabase:From("LibTSMUtil"):IncludeClassType("ObjectPool")
 local Table = LibTSMDatabase:From("LibTSMUtil"):Include("Lua.Table")
 local private = {
-	objectPool = ObjectPool.New("DATABASE_QUERY_CLAUSES", DatabaseQueryClause, 2), ---@type ObjectPool<DatabaseQueryClause>
+	objectPool = ObjectPool.New("DATABASE_QUERY_CLAUSES", DatabaseQueryClause, 2),
 }
 -- NOTE: We don't use a nested enum for performance reasons
 local OPERATION_TYPE = EnumType.New("DB_QUERY_OPERATION_TYPE", {
