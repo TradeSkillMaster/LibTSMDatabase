@@ -11,7 +11,7 @@ local EnumType = LibTSMDatabase:From("LibTSMUtil"):Include("BaseType.EnumType")
 local ObjectPool = LibTSMDatabase:From("LibTSMUtil"):IncludeClassType("ObjectPool")
 local Table = LibTSMDatabase:From("LibTSMUtil"):Include("Lua.Table")
 local private = {
-	objectPool = ObjectPool.New("DATABASE_QUERY_CLAUSES", DatabaseQueryClause, 2),
+	objectPool = ObjectPool.New("DATABASE_QUERY_CLAUSES", DatabaseQueryClause, 2), ---@type ObjectPool<DatabaseQueryClause>
 }
 -- NOTE: We don't use a nested enum for performance reasons
 local OPERATION_TYPE = EnumType.New("DB_QUERY_OPERATION_TYPE", {
@@ -81,7 +81,7 @@ local OPERATION_TYPE_LOOKUP = {
 ---@param ... any Additional arguments to the operation
 ---@return DatabaseQueryClause
 function DatabaseQueryClause.__static.Get(query, parent, operation, ...)
-	local clause = private.objectPool:Get() ---@type DatabaseQueryClause
+	local clause = private.objectPool:Get()
 	clause:_Acquire(query, parent, operation, ...)
 	return clause
 end
