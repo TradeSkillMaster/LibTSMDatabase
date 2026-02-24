@@ -10,7 +10,7 @@ local DatabaseTable = LibTSMDatabase:IncludeClassType("DatabaseTable")
 local EnumType = LibTSMDatabase:From("LibTSMUtil"):Include("BaseType.EnumType")
 local ObjectPool = LibTSMDatabase:From("LibTSMUtil"):IncludeClassType("ObjectPool")
 local private = {
-	objectPool = ObjectPool.New("DATABASE_SCHEMAS", DatabaseSchema, 1),
+	objectPool = ObjectPool.New("DATABASE_SCHEMAS", DatabaseSchema, 1), ---@type ObjectPool<DatabaseSchema>
 }
 
 
