@@ -1340,6 +1340,7 @@ function DatabaseTable.__private:_DeleteRowHelper(uuid)
 	end
 end
 
+---@private
 function DatabaseTable:_GetRowField(uuid, field)
 	local smartMapReader = self._smartMapReaderLookup[field]
 	if smartMapReader then
@@ -1364,6 +1365,7 @@ function DatabaseTable:_GetRowField(uuid, field)
 	end
 end
 
+---@private
 function DatabaseTable:_GetRowSimpleFields(uuid, ...)
 	local dataOffset = self._uuidToDataOffsetLookup[uuid]
 	if not dataOffset then

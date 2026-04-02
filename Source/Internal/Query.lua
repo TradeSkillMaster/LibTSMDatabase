@@ -93,9 +93,9 @@ end
 -- ============================================================================
 
 function DatabaseQuery.__private:__init()
-	self._db = nil ---@type DatabaseTable
-	self._rootClause = nil
-	self._currentClause = nil
+	self._db = nil ---@type DatabaseTable!
+	self._rootClause = nil ---@type DatabaseQueryClause!
+	self._currentClause = nil ---@type DatabaseQueryClause!
 	self._orderBy = {}
 	self._orderByAscending = {}
 	self._distinct = nil
@@ -215,7 +215,7 @@ end
 ---@param func fun(...: any): T A function which takes the arg field(s) and returns the value of the virtual field
 ---@param argField string|string[] The field (or list of fields) to pass into the function
 ---@param defaultValue? any The default value to use if the function returns nil
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:VirtualField(field, fieldType, func, argField, defaultValue)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -248,7 +248,7 @@ end
 ---@param field string The name of the new virtual field
 ---@param map SmartMap The smart map
 ---@param inputFieldName string The field to use as the input to the smart map
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:VirtualSmartMapField(field, map, inputFieldName)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -267,7 +267,7 @@ end
 ---Adds a virtual field which is the hash of a list of other fields.
 ---@param field string The name of the new virtual field
 ---@param hashFields string[] The list of fields to calculate the hash of (NOTE: this reference must remain valid and constant for the lifecycle of the query)
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:VirtualHashField(field, hashFields)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -292,7 +292,7 @@ end
 ---@param field string The name of the field
 ---@param value any The value to compare to
 ---@param otherField? string The name of the other field to compare with
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:Equal(field, value, otherField)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -306,7 +306,7 @@ end
 ---@param field string The name of the field
 ---@param value any The value to compare to
 ---@param otherField? string The name of the other field to compare with
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:NotEqual(field, value, otherField)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -320,7 +320,7 @@ end
 ---@param field string The name of the field
 ---@param value any The value to compare to
 ---@param otherField? string The name of the other field to compare with
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:LessThan(field, value, otherField)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -334,7 +334,7 @@ end
 ---@param field string The name of the field
 ---@param value any The value to compare to
 ---@param otherField? string The name of the other field to compare with
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:LessThanOrEqual(field, value, otherField)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -348,7 +348,7 @@ end
 ---@param field string The name of the field
 ---@param value any The value to compare to
 ---@param otherField? string The name of the other field to compare with
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:GreaterThan(field, value, otherField)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -362,7 +362,7 @@ end
 ---@param field string The name of the field
 ---@param value any The value to compare to
 ---@param otherField? string The name of the other field to compare with
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:GreaterThanOrEqual(field, value, otherField)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -375,7 +375,7 @@ end
 ---Where a string field matches a pattern.
 ---@param field string The name of the field
 ---@param value string The pattern to match
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:Matches(field, value)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -389,7 +389,7 @@ end
 ---Where a string field contains a substring.
 ---@param field string The name of the field
 ---@param value string The substring to match
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:Contains(field, value)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -403,7 +403,7 @@ end
 ---Where a string field starts with a substring.
 ---@param field string The name of the field
 ---@param value string The substring to match
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:StartsWith(field, value)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -416,7 +416,7 @@ end
 
 ---Where a foreign field (obtained via a left join) is nil.
 ---@param field string The name of the field
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:IsNil(field)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -429,7 +429,7 @@ end
 
 ---Where a foreign field (obtained via a left join) is not nil.
 ---@param field string The name of the field
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:IsNotNil(field)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -444,7 +444,7 @@ end
 ---@param field string The name of the field
 ---@param func fun(value: any, arg?: any): boolean The function which gets passed the field value and returns whether or not the query results should include it
 ---@param arg? any An extra argument to pass to the function
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:Function(field, func, arg)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -457,7 +457,7 @@ end
 ---Where a field exists as a key within a table.
 ---@param field string The name of the field
 ---@param value table<string,any> The table to check against
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:InTable(field, value)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -472,7 +472,7 @@ end
 ---Where a field does not exists as a key within a table.
 ---@param field string The name of the field
 ---@param value table The table to check against
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:NotInTable(field, value)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -487,7 +487,7 @@ end
 ---Where a list field contains a value.
 ---@param field string The name of the list field
 ---@param value string The value to check against
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:ListContains(field, value)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -501,7 +501,7 @@ end
 ---Starts a nested AND clause.
 ---
 ---All of the clauses following this (until the matching `:End()`) must be true for the AND clause to be true.
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:And()
 	if self._currentClause:_IsConditinal() then
 		error("Can't have nested clauses inside of a conditional")
@@ -513,7 +513,7 @@ end
 ---Starts a nested OR clause.
 ---
 ---At least one of the clauses following this (until the matching `:End()`) must be true for the OR clause to be true.
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:Or()
 	if self._currentClause:_IsConditinal() then
 		error("Can't have nested clauses inside of a conditional")
@@ -526,7 +526,7 @@ end
 ---
 ---Any clauses following this (until the matching `:ElseIf()` / `:Else()` / `:End()`) are only added to the query as part of the outer clause if the condition is true.
 ---@param condition boolean The condition
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:If(condition)
 	if self._currentClause:_IsConditinal() then
 		error("Can't have nested clauses inside of a conditional")
@@ -539,7 +539,7 @@ end
 ---
 ---Any clauses following this (until the matching `:ElseIf()` / `:Else()` / `:End()`) are only added to the query as part of the outer clause if the condition is true.
 ---@param condition boolean The condition
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:ElseIf(condition)
 	self:_NewClause(QueryClause.OPERATION.ELSEIF, condition)
 	return self
@@ -548,14 +548,14 @@ end
 ---Starts an ELSE clause.
 ---
 ---Any clauses following this (until the matching `:End()`) are only added to the query (asart of the outer clause) if the prior IF condition is false.
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:Else()
 	self:_NewClause(QueryClause.OPERATION.ELSE)
 	return self
 end
 
 ---Ends a nested AND/OR/IF clause.
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:End()
 	assert(self._currentClause ~= self._rootClause, "No current clause to end")
 	self._currentClause = self._currentClause:_EndSubClause()
@@ -567,7 +567,7 @@ end
 ---@param db DatabaseTable The database table to join with
 ---@param field string The field to join on
 ---@param foreignField? string The foreign field to join on (defaults to `field`)
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:LeftJoin(db, field, foreignField)
 	if self._currentClause:_IsConditinal() then
 		error("Can't have joins inside of conditionals")
@@ -580,7 +580,7 @@ end
 ---@param db DatabaseTable The database table to join with
 ---@param field string The field to join on
 ---@param foreignField? string The foreign field to join on (defaults to `field`)
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:InnerJoin(db, field, foreignField)
 	if self._currentClause:_IsConditinal() then
 		error("Can't have joins inside of conditionals")
@@ -593,7 +593,7 @@ end
 ---@param db DatabaseTable The database to join with
 ---@param field string The name of the field in the other table to join on
 ---@param sumField string The name of the field in the other table to sum
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:AggregateJoinSummed(db, field, sumField)
 	if self._currentClause:_IsConditinal() then
 		error("Can't have joins inside of conditionals")
@@ -610,7 +610,7 @@ end
 ---descending as this method is called additional times (meaning the first OrderBy will have highest priority).
 ---@param field string The name of the field to order by
 ---@param ascending boolean Whether to order in ascending order (descending otherwise)
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:OrderBy(field, ascending)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -632,7 +632,7 @@ end
 ---
 ---This method can be used to ensure that only the first row for each distinct value of the field is returned.
 ---@param field string The field to ensure is distinct in the results
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:Distinct(field)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -648,7 +648,7 @@ end
 ---
 ---The number of arguments should match the number of Util.CONSTANTS.BOUND_QUERY_PARAM values in the query's clauses.
 ---@param ... any The bound parameter values
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:BindParams(...)
 	if self._currentClause:_IgnoringSubClauses() then
 		return self
@@ -662,9 +662,9 @@ end
 ---Set an update callback.
 ---
 ---This callback gets called whenever any rows in the underlying database change.
----@param func fun(db: DatabaseQuery, changedUUID: number|nil, context: any) The callback function
+---@param func fun(db: self, changedUUID: number|nil, context: any|nil) The callback function
 ---@param context? any A context argument which is passed as the third argument to the callback function
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:SetUpdateCallback(func, context)
 	assert(self._db)
 	self._updateCallback = func
@@ -674,7 +674,7 @@ end
 
 ---Pauses or unpauses callbacks for query updates.
 ---@param paused boolean Whether or not updates should be paused
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:SetUpdatesPaused(paused)
 	assert(self._db)
 	self._updatesPaused = self._updatesPaused + (paused and 1 or -1)
@@ -686,7 +686,7 @@ function DatabaseQuery:SetUpdatesPaused(paused)
 end
 
 ---Marks the query to be automatically released upon completion of the next results method.
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:AutoRelease()
 	assert(self._db and not self._autoRelease)
 	self._autoRelease = true
@@ -791,7 +791,7 @@ function DatabaseQuery:UUIDDiffPrepare(oldUUIDs)
 end
 
 ---Iterate over the diff prepared with `DatabaseQuery:UUIDDiffPrepare()`.
----@return IteratorObject|fun(): number, "REMOVE"|"INSERT", number, number[] @Iterator with fields: `index`, `action`, `startIndex`, `uuids`
+---@return IteratorObject|(fun(): number, "REMOVE"|"INSERT", number, number[]) @Iterator with fields: `index`, `action`, `startIndex`, `uuids`
 function DatabaseQuery:UUIDDiffIterator()
 	local context = private.uuidDiffContext
 	assert(context.inUse)
@@ -803,7 +803,7 @@ end
 ---@param tbl table The table to store the result in
 ---@param field1 string The first field to select (either the key if `field2` is provided or the value for the list)
 ---@param field2? string If provided, the field to use as the value with `field1` being used as the key
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:AsTable(tbl, field1, field2)
 	assert(field1)
 	-- Don't care about the results being sorted if we are creating a key/value table
@@ -850,7 +850,7 @@ end
 
 ---Assert that there's a single result row and get the UUID and the selected fields from it.
 ---@param ... string Fields to get
----@return any ...
+---@return number uuid, ...any
 function DatabaseQuery:GetSingleResultWithUUID(...)
 	self:_Execute()
 	assert(self._result.count == 1)
@@ -859,15 +859,15 @@ end
 
 ---Get the selected fields from the first result row.
 ---@param ... string Fields to get
----@return any? ...
+---@return ...any
 function DatabaseQuery:GetFirstResult(...)
 	return self:GetNthResult(1, ...)
 end
 
 ---Get the UUID and the selected fields from the first result row.
 ---@param ... string Fields to get
----@return number? uuid
----@return any? ...
+---@return number uuid, ...any
+---@overload return:
 function DatabaseQuery:GetFirstResultWithUUID(...)
 	return self:GetNthResultWithUUID(1, ...)
 end
@@ -875,7 +875,8 @@ end
 ---Get the selected fields from the n-th result row.
 ---@param n number The index of the result row to get
 ---@param ... string Fields to get
----@return any? ...
+---@return ...any
+---@overload return:
 function DatabaseQuery:GetNthResult(n, ...)
 	self:_Execute()
 	assert(self._iteratorState == ITERATOR_STATE.IDLE)
@@ -895,14 +896,14 @@ end
 ---Get the UUID and the selected fields from the n-th result row.
 ---@param n number The index of the result row to get
 ---@param ... string Fields to get
----@return number? uuid
----@return any? ...
+---@return number uuid, ...any
+---@overload return:
 function DatabaseQuery:GetNthResultWithUUID(n, ...)
 	self:_Execute()
 	assert(self._iteratorState == ITERATOR_STATE.IDLE)
 	if self._result.count < n then
 		self:_DoAutoRelease()
-		return nil
+		return
 	end
 	local uuid = self._result[n]
 	if not uuid or select("#", ...) == 0 then
@@ -1055,7 +1056,7 @@ function DatabaseQuery:Delete()
 end
 
 ---Resets the database query.
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:Reset()
 	assert(self._db)
 	self:_ResetDistinct()
@@ -1068,7 +1069,7 @@ function DatabaseQuery:Reset()
 end
 
 ---Resets any virtual fields added to the database query.
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:ResetVirtualFields()
 	assert(self._db)
 	for _, func in pairs(self._virtualFieldFunc) do
@@ -1085,7 +1086,7 @@ function DatabaseQuery:ResetVirtualFields()
 end
 
 ---Resets any filtering clauses of the database query.
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:ResetFilters()
 	self._rootClause:_Release()
 	self._rootClause = QueryClause.Get(self, nil, QueryClause.OPERATION.AND)
@@ -1095,7 +1096,7 @@ function DatabaseQuery:ResetFilters()
 end
 
 ---Resets any ordering clauses of the database query.
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:ResetOrderBy()
 	assert(self._db)
 	wipe(self._orderBy)
@@ -1124,7 +1125,7 @@ end
 ---Updates the last order by clause.
 ---@param field string The name of the field to order by
 ---@param ascending boolean Whether to order in ascending order (descending otherwise)
----@return DatabaseQuery
+---@return self
 function DatabaseQuery:UpdateLastOrderBy(field, ascending)
 	assert(#self._orderBy > 0)
 	tremove(self._orderBy)
