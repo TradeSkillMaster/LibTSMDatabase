@@ -841,7 +841,7 @@ end
 
 ---Assert that there's a single result row and get the selected fields from it.
 ---@param ... string Fields to get
----@return any ...
+---@return ...any
 function DatabaseQuery:GetSingleResult(...)
 	self:_Execute()
 	assert(self._result.count == 1)
@@ -850,11 +850,12 @@ end
 
 ---Assert that there's a single result row and get the UUID and the selected fields from it.
 ---@param ... string Fields to get
----@return number uuid, ...any
+---@return number uuid
+---@return ...any
 function DatabaseQuery:GetSingleResultWithUUID(...)
 	self:_Execute()
 	assert(self._result.count == 1)
-	return self:GetNthResultWithUUID(1, ...)
+	return self:GetNthResultWithUUID(1, ...) ---@diagnostic disable-line: return-mismatch
 end
 
 ---Get the selected fields from the first result row.
@@ -866,8 +867,9 @@ end
 
 ---Get the UUID and the selected fields from the first result row.
 ---@param ... string Fields to get
----@return number uuid, ...any
----@overload return:
+---@return number? uuid
+---@return ...any
+---@overload return: nil
 function DatabaseQuery:GetFirstResultWithUUID(...)
 	return self:GetNthResultWithUUID(1, ...)
 end
@@ -896,14 +898,15 @@ end
 ---Get the UUID and the selected fields from the n-th result row.
 ---@param n number The index of the result row to get
 ---@param ... string Fields to get
----@return number uuid, ...any
----@overload return:
+---@return number? uuid
+---@return ...any
+---@overload return: nil
 function DatabaseQuery:GetNthResultWithUUID(n, ...)
 	self:_Execute()
 	assert(self._iteratorState == ITERATOR_STATE.IDLE)
 	if self._result.count < n then
 		self:_DoAutoRelease()
-		return
+		return nil
 	end
 	local uuid = self._result[n]
 	if not uuid or select("#", ...) == 0 then
@@ -1102,35 +1105,6 @@ function DatabaseQuery:ResetOrderBy()
 	wipe(self._orderBy)
 	wipe(self._orderByAscending)
 	self._resultState = RESULT_STATE.STALE
-	return self
-end
-
----Gets info on a specific order by clause.
----@param index number The index of the order by clause
----@return string? field
----@return boolean? ascending
-function DatabaseQuery:GetOrderBy(index)
-	assert(self._orderBy[index])
-	return self._orderBy[index], self._orderByAscending[index]
-end
-
----Gets info on the last order by clause.
----@return string? field
----@return boolean? ascending
-function DatabaseQuery:GetLastOrderBy()
-	assert(self._db)
-	return self._orderBy[#self._orderBy], self._orderByAscending[#self._orderByAscending]
-end
-
----Updates the last order by clause.
----@param field string The name of the field to order by
----@param ascending boolean Whether to order in ascending order (descending otherwise)
----@return self
-function DatabaseQuery:UpdateLastOrderBy(field, ascending)
-	assert(#self._orderBy > 0)
-	tremove(self._orderBy)
-	tremove(self._orderByAscending)
-	self:OrderBy(field, ascending)
 	return self
 end
 
