@@ -45,7 +45,7 @@ local OPERATION = EnumType.New("DB_QUERY_OPERATION", {
 	ELSE = EnumType.NewValue(),
 })
 DatabaseQueryClause.OPERATION = OPERATION
-local OPERATION_TYPE_LOOKUP = {
+local OPERATION_TYPE_LOOKUP = { ---@type table<DB_QUERY_OPERATION,DB_QUERY_OPERATION_TYPE>
 	[OPERATION.EQUAL] = OPERATION_TYPE.COMPARISON,
 	[OPERATION.NOT_EQUAL] = OPERATION_TYPE.COMPARISON,
 	[OPERATION.LESS] = OPERATION_TYPE.COMPARISON,
@@ -77,7 +77,7 @@ local OPERATION_TYPE_LOOKUP = {
 ---Gets a new query clause.
 ---@param query DatabaseQuery The owning query
 ---@param parent? DatabaseQueryClause The parent query clause
----@param operation EnumValue The operation type
+---@param operation DB_QUERY_OPERATION The operation type
 ---@param ... any Additional arguments to the operation
 ---@return DatabaseQueryClause
 function DatabaseQueryClause.__static.Get(query, parent, operation, ...)
@@ -93,9 +93,9 @@ end
 -- ============================================================================
 
 function DatabaseQueryClause.__private:__init()
-	self._query = nil ---@type DatabaseQuery
+	self._query = nil ---@type DatabaseQuery!
 	self._parent = nil ---@type DatabaseQueryClause?
-	self._operation = nil
+	self._operation = nil ---@type DB_QUERY_OPERATION!
 	-- Comparison
 	self._field = nil
 	self._value = nil
@@ -151,7 +151,7 @@ function DatabaseQueryClause.__private:_SetOperation(operation, ...)
 			assert(#self._subClauses == 0)
 			self._value = condition and true or false
 		elseif operation == OPERATION.ELSEIF then
-			assert(self._parent._operation == OPERATION.IF)
+			assert(self._parent and self._parent._operation == OPERATION.IF)
 			for _, subClause in ipairs(self._subClauses) do
 				if subClause._operation == OPERATION.ELSE then
 					error("ELSEIF clause follows ELSE clause")
@@ -160,7 +160,7 @@ function DatabaseQueryClause.__private:_SetOperation(operation, ...)
 			self._value = condition and true or false
 		elseif operation == OPERATION.ELSE then
 			assert(condition == nil)
-			assert(self._parent._operation == OPERATION.IF)
+			assert(self._parent and self._parent._operation == OPERATION.IF)
 			for _, subClause in ipairs(self._subClauses) do
 				if subClause._operation == OPERATION.ELSE then
 					error("Multiple ELSE clauses")
@@ -178,19 +178,20 @@ end
 function DatabaseQueryClause:_EndSubClause()
 	local parent = self._parent
 	if self._operation == OPERATION.IF then
+		assert(parent)
 		-- Collapse all the sub clauses into the parent (we know they were part of the true block at this point)
 		-- and remove any residual elseif / else clauses
 		for _, subClause in ipairs(self._subClauses) do
 			if subClause._operation == OPERATION.ELSEIF or subClause._operation == OPERATION.ELSE then
 				subClause:_Release()
 			else
-				subClause._parent = self._parent
-				self._parent:_InsertSubClause(subClause)
+				subClause._parent = parent
+				parent:_InsertSubClause(subClause)
 			end
 		end
 		wipe(self._subClauses)
 		-- Remove this clause from the parent and release it
-		assert(Table.RemoveByValue(self._parent._subClauses, self) == 1)
+		assert(Table.RemoveByValue(parent._subClauses, self) == 1)
 		self:_Release()
 	end
 	return parent
