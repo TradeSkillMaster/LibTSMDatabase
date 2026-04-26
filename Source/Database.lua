@@ -74,7 +74,7 @@ end
 -- ============================================================================
 
 ---Debug function which iterates over all DB schema names.
----@return IteratorObject|fun(): number, string @Iterator with fields: `index`, `name`
+---@return IteratorObject<fun(): number, string> @Iterator with fields: `index`, `name`
 function Database.InfoNameIterator()
 	return private.infoNameDB:NewAutoReleaseQuery()
 		:OrderBy("name", true)

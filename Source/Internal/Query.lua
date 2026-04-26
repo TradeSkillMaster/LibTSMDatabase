@@ -209,7 +209,7 @@ function DatabaseQuery:Release(abortIterator)
 end
 
 ---Adds a virtual field to the query.
----@generic T: type
+---@generic T: string|number|boolean
 ---@param field string The name of the new virtual field
 ---@param fieldType `T` The type of the virtual field
 ---@param func fun(...: any): T A function which takes the arg field(s) and returns the value of the virtual field
@@ -703,7 +703,7 @@ end
 
 ---Iterate over the result rows, extracting the specified fields.
 ---@param ... string Fields to get
----@return IteratorObject|fun(): number, ... @Iterator with fields: `uuid`, ...
+---@return IteratorObject<fun(): number, ...> @Iterator with fields: `uuid`, ...
 function DatabaseQuery:Iterator(...)
 	assert(self._iteratorIndex == nil)
 	self:_Execute()
@@ -719,7 +719,7 @@ end
 ---
 ---Abortion must be handled by the caller by calling `IsIteratorAborted()` at the end of each iteration loop
 ---@param ... string Fields to get
----@return IteratorObject|fun(): number, ... @Iterator with fields: `uuid`, ...
+---@return IteratorObject<fun(): number, ...> @Iterator with fields: `uuid`, ...
 function DatabaseQuery:AbortableIterator(...)
 	assert(self._iteratorIndex == nil)
 	self:_Execute()
@@ -791,7 +791,7 @@ function DatabaseQuery:UUIDDiffPrepare(oldUUIDs)
 end
 
 ---Iterate over the diff prepared with `DatabaseQuery:UUIDDiffPrepare()`.
----@return IteratorObject|(fun(): number, "REMOVE"|"INSERT", number, number[]) @Iterator with fields: `index`, `action`, `startIndex`, `uuids`
+---@return IteratorObject<fun(): number, "REMOVE"|"INSERT", number, number[]> @Iterator with fields: `index`, `action`, `startIndex`, `uuids`
 function DatabaseQuery:UUIDDiffIterator()
 	local context = private.uuidDiffContext
 	assert(context.inUse)
@@ -867,9 +867,7 @@ end
 
 ---Get the UUID and the selected fields from the first result row.
 ---@param ... string Fields to get
----@return number? uuid
----@return ...any
----@overload return: nil
+---@return (number? uuid, ...any)|(nil)
 function DatabaseQuery:GetFirstResultWithUUID(...)
 	return self:GetNthResultWithUUID(1, ...)
 end
@@ -878,7 +876,6 @@ end
 ---@param n number The index of the result row to get
 ---@param ... string Fields to get
 ---@return ...any
----@overload return:
 function DatabaseQuery:GetNthResult(n, ...)
 	self:_Execute()
 	assert(self._iteratorState == ITERATOR_STATE.IDLE)
@@ -898,9 +895,7 @@ end
 ---Get the UUID and the selected fields from the n-th result row.
 ---@param n number The index of the result row to get
 ---@param ... string Fields to get
----@return number? uuid
----@return ...any
----@overload return: nil
+---@return (number uuid, ...any)|(nil)
 function DatabaseQuery:GetNthResultWithUUID(n, ...)
 	self:_Execute()
 	assert(self._iteratorState == ITERATOR_STATE.IDLE)
