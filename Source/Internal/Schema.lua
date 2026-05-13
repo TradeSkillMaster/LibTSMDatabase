@@ -71,7 +71,7 @@ end
 
 ---Adds a string field to the DB schema.
 ---@param fieldName string The name of the field
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddStringField(fieldName)
 	self:_AddField("string", fieldName)
 	return self
@@ -79,7 +79,7 @@ end
 
 ---Adds a number field to the DB schema.
 ---@param fieldName string The name of the field
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddNumberField(fieldName)
 	self:_AddField("number", fieldName)
 	return self
@@ -87,7 +87,7 @@ end
 
 ---Adds a boolean field to the DB schema.
 ---@param fieldName string The name of the field
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddBooleanField(fieldName)
 	self:_AddField("boolean", fieldName)
 	return self
@@ -96,7 +96,7 @@ end
 ---Adds an enum type field to the DB schema.
 ---@param fieldName string The name of the field
 ---@param enumType EnumObject The enum type
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddEnumField(fieldName, enumType)
 	assert(EnumType.IsType(enumType))
 	self:_AddField("ENUM", fieldName, nil, enumType)
@@ -105,7 +105,7 @@ end
 
 ---Adds a string field with a unique index to the DB schema.
 ---@param fieldName string The name of the field
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddUniqueStringField(fieldName)
 	self:_AddField("string", fieldName, true)
 	return self
@@ -113,7 +113,7 @@ end
 
 ---Adds a number field with a unique index to the DB schema.
 ---@param fieldName string The name of the field
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddUniqueNumberField(fieldName)
 	self:_AddField("number", fieldName, true)
 	return self
@@ -121,7 +121,7 @@ end
 
 ---Adds a string list field to the DB schema.
 ---@param fieldName string The name of the field
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddStringListField(fieldName)
 	self:_AddField("STRING_LIST", fieldName)
 	return self
@@ -129,7 +129,7 @@ end
 
 ---Adds a number list field to the DB schema.
 ---@param fieldName string The name of the field
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddNumberListField(fieldName)
 	self:_AddField("NUMBER_LIST", fieldName)
 	return self
@@ -139,7 +139,7 @@ end
 ---@param fieldName string The name of the field
 ---@param map SmartMap The smart map object
 ---@param inputFieldName string The name of the field which is used as an input to the smart map
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddSmartMapField(fieldName, map, inputFieldName)
 	assert(self._fieldTypeLookup[inputFieldName] == map:GetKeyType())
 	local fieldType = map:GetValueType()
@@ -152,7 +152,7 @@ end
 
 ---Adds an index which speeds up querying for the field.
 ---@param fieldName string The name of the field to index
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddIndex(fieldName)
 	local fieldType = self._fieldTypeLookup[fieldName]
 	assert(fieldType and fieldType ~= "STRING_LIST" and fieldType ~= "NUMBER_LIST" and not self._isIndex[fieldName])
@@ -162,7 +162,7 @@ end
 
 ---Adds a trigram index which speeds up text searching.
 ---@param fieldName string The name of the field to index
----@return DatabaseSchema
+---@return self
 function DatabaseSchema:AddTrigramIndex(fieldName)
 	local fieldType = self._fieldTypeLookup[fieldName]
 	assert(fieldType and fieldType ~= "STRING_LIST" and fieldType ~= "NUMBER_LIST" and not self._trigramIndexField)
