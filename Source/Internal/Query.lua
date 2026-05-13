@@ -125,7 +125,7 @@ function DatabaseQuery.__private:__init()
 	self._joinDBs = {}
 	self._joinFields = {}
 	self._joinForeignFields = {}
-	self._aggregateJoinQueries = {} ---@type DatabaseQuery[]
+	self._aggregateJoinQueries = {} ---@type (DatabaseQuery|false)[]
 	self._virtualFieldFunc = {}
 	self._virtualFieldArgField = {}
 	self._virtualFieldType = {}
@@ -456,7 +456,7 @@ end
 
 ---Where a field exists as a key within a table.
 ---@param field string The name of the field
----@param value table<string,any> The table to check against
+---@param value table<string|number,any> The table to check against
 ---@return self
 function DatabaseQuery:InTable(field, value)
 	if self._currentClause:_IgnoringSubClauses() then
