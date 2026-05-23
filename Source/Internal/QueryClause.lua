@@ -241,6 +241,7 @@ function DatabaseQueryClause:_IsTrue(uuid, ignoreField)
 	elseif operation == OPERATION.CONTAINS then
 		return strfind(strlower(rowValue), value --[[@as string]], 1, true) and true or false
 	elseif operation == OPERATION.STARTS_WITH then
+		assert(value)
 		return strsub(strlower(rowValue), 1, #value) == value
 	elseif operation == OPERATION.IS_NIL then
 		return rowValue == nil

@@ -259,6 +259,7 @@ function DatabaseTable:UpdateRow(uuid, updates, value)
 			self:_TrigramIndexRemove(uuid, prevValue)
 		end
 		if self:_IsListField(updates) then
+			assert(value)
 			self._data[dataOffset + fieldOffset - 1] = self:_InsertListData(value)
 		else
 			self._data[dataOffset + fieldOffset - 1] = value
