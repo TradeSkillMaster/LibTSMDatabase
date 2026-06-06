@@ -1181,7 +1181,7 @@ function DatabaseTable.__private:_UpdateFields(uuid, changeContext)
 	local changedIndexUnique = false
 	for indexField, indexList in pairs(self._indexLists) do
 		if changeContext[indexField] ~= nil or (self:_IsSmartMapField(indexField) and changeContext[self._smartMapInputLookup[indexField]] ~= nil) then
-			-- remove and re-add row to the index list since the index value changed
+			-- Remove and re-add row to the index list since the index value changed
 			if oldIndexMinIndex[indexField] then
 				local deleteIndex = nil
 				for i = oldIndexMinIndex[indexField], #indexList do
