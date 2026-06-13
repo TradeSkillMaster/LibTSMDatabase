@@ -64,8 +64,8 @@ function DatabaseTable.__private:__init(schema)
 	self._queries = {}
 	self._indexLists = {}
 	self._uniques = {}
-	self._trigramIndexField = nil
-	self._trigramIndexLists = {}
+	self._trigramIndexField = nil ---@type string?
+	self._trigramIndexLists = {} ---@type table<string,number[]>
 	self._indexOrUniqueFields = {}
 	self._queryUpdatesPaused = 0
 	self._queuedQueryUpdate = false
@@ -79,16 +79,16 @@ function DatabaseTable.__private:__init(schema)
 	}
 	self._fieldOffsetLookup = {}
 	self._fieldTypeLookup = {}
-	self._fieldTypeEnumType = {} ---@type table<string,EnumObject>
+	self._fieldTypeEnumType = {} ---@type table<string,EnumObject?>
 	self._storedFieldList = {}
 	self._numStoredFields = 0
 	self._data = {}
 	self._uuids = {}
-	self._uuidToDataOffsetLookup = {}
+	self._uuidToDataOffsetLookup = {} ---@type table<number,number?>
 	self._smartMapInputLookup = {}
 	self._smartMapInputFields = {}
-	self._smartMapReaderLookup = {}
-	self._listData = nil
+	self._smartMapReaderLookup = {} ---@type table<string,SmartMapReader?>
+	self._listData = nil ---@type {nextIndex: number}|any[]|nil
 
 	-- Process all the fields and grab the indexFields for further processing
 	assert(not next(private.indexTemp))
@@ -374,15 +374,6 @@ function DatabaseTable:GetUniqueRow(uniqueField, uniqueValue)
 	local uuid = self:_GetUniqueRow(uniqueField, uniqueValue)
 	assert(uuid)
 	return uuid
-end
-
----Gets fields from a unique row in the DB.
----@param uniqueField string The unique field
----@param uniqueValue any The value of the unique field
----@param ... string The fields to get the values of
----@return ...
-function DatabaseTable:GetUniqueRowFields(uniqueField, uniqueValue, ...)
-	return self:GetRowFields(self:GetUniqueRow(uniqueField, uniqueValue), ...)
 end
 
 ---Gets a new query which is automatically released after execution.
@@ -831,7 +822,7 @@ function DatabaseTable:BulkInsertEnd()
 end
 
 ---Aborts a bulk insert into the database without adding any of the rows.
-function DatabaseTable:BulkInsertAbort()
+function DatabaseTable:BulkInsertAbort() ---@diagnostic disable-line: unused-function
 	assert(self._bulkInsertContext.inUse)
 	if self._bulkInsertContext.firstDataIndex then
 		-- remove all the unique values
@@ -859,6 +850,7 @@ function DatabaseTable:BulkInsertAbort()
 	wipe(self._bulkInsertContext)
 	self:SetQueryUpdatesPaused(false)
 end
+---@diagnostic enable:unused-function
 
 ---Returns a raw iterator over all rows in the database.
 ---@return fun(): number, ... @Iterator with fields (index, <DB_FIELDS...>)
@@ -1021,21 +1013,21 @@ function DatabaseTable:_IndexListBinarySearch(indexField, indexValue, matchLowes
 			rowValue = self:_GetRowIndexValue(indexList[mid], indexField)
 		end
 		if rowValue == indexValue then
-			-- cache the first low and high values which contain a match to make future searches faster
+			-- Cache the first low and high values which contain a match to make future searches faster
 			firstMatchLow = firstMatchLow or low
 			firstMatchHigh = firstMatchHigh or high
 			if matchLowest then
-				-- treat this as too high as there may be lower indexes with the same value
+				-- Treat this as too high as there may be lower indexes with the same value
 				high = mid - 1
 			else
-				-- treat this as too low as there may be lower indexes with the same value
+				-- Treat this as too low as there may be lower indexes with the same value
 				low = mid + 1
 			end
 		elseif rowValue < indexValue then
-			-- we're too low
+			-- We're too low
 			low = mid + 1
 		else
-			-- we're too high
+			-- We're too high
 			high = mid - 1
 		end
 	end
@@ -1046,7 +1038,7 @@ end
 function DatabaseTable:_GetIndexListMatchingIndexRange(indexField, indexValue)
 	local lowerBound, firstMatchLow, firstMatchHigh = self:_IndexListBinarySearch(indexField, indexValue, true)
 	if not firstMatchLow then
-		-- we didn't find an exact match
+		-- We didn't find an exact match
 		return
 	end
 	local upperBound = self:_IndexListBinarySearch(indexField, indexValue, false, firstMatchLow, firstMatchHigh)
@@ -1168,6 +1160,7 @@ function DatabaseTable.__private:_UpdateFields(uuid, changeContext)
 	end
 	local prevTrigramValue = self._trigramIndexField and changeContext[self._trigramIndexField] and private.TrigramValueFunc(uuid, self, self._trigramIndexField)
 	local index = self._uuidToDataOffsetLookup[uuid]
+	assert(index)
 	for i = 1, self._numStoredFields do
 		local field = self._storedFieldList[i]
 		if changeContext[field] ~= nil then
@@ -1285,6 +1278,7 @@ function DatabaseTable.__private:_HandleSmartMapReaderUpdate(reader, changes)
 end
 
 function DatabaseTable.__private:_InsertListData(value)
+	assert(self._listData)
 	local dataIndex = self._listData.nextIndex
 	self._listData[self._listData.nextIndex] = #value
 	for j = 1, #value do
@@ -1296,17 +1290,17 @@ end
 
 function DatabaseTable.__private:_DeleteRowHelper(uuid)
 	-- Lookup the index of the row being deleted
-	local uuidIndex = ((self._uuidToDataOffsetLookup[uuid] - 1) / self._numStoredFields) + 1
-	local rowIndex = self._uuidToDataOffsetLookup[uuid]
+	local dataOffset = self._uuidToDataOffsetLookup[uuid]
+	assert(dataOffset)
+	self._uuidToDataOffsetLookup[uuid] = nil
+	local uuidIndex = ((dataOffset - 1) / self._numStoredFields) + 1
+	local rowIndex = dataOffset
 	assert(rowIndex)
 
 	-- Get the index of the last row
 	local lastUUIDIndex = #self._data / self._numStoredFields
 	local lastRowIndex = #self._data - self._numStoredFields + 1
 	assert(lastRowIndex > 0 and lastUUIDIndex > 0)
-
-	-- Remove this row from both lookups
-	self._uuidToDataOffsetLookup[uuid] = nil
 
 	if self._listData then
 		-- Remove any list field data for this row
@@ -1359,6 +1353,7 @@ function DatabaseTable:_GetRowField(uuid, field)
 		error("Failed to get row data")
 	end
 	if self:_IsListField(field) then
+		assert(self._listData)
 		local len = self._listData[result]
 		return Iterator.Acquire(private.ListDataIterator, self._listData, result, result + len)
 	else

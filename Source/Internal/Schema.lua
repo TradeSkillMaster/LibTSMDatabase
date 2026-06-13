@@ -202,6 +202,9 @@ function DatabaseSchema:_GetName()
 end
 
 ---@private
+---@return fun(): number, string, string, boolean, boolean, boolean, SmartMap, string, EnumObject?
+---@return self
+---@return number
 function DatabaseSchema:_FieldIterator()
 	return private.FieldIterator, self, 0
 end
