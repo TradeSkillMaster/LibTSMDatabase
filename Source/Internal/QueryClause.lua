@@ -241,7 +241,9 @@ function DatabaseQueryClause:_IsTrue(uuid, ignoreField)
 	elseif operation == OPERATION.CONTAINS then
 		return strfind(strlower(rowValue), value --[[@as string]], 1, true) and true or false
 	elseif operation == OPERATION.STARTS_WITH then
-		assert(value)
+		if not value then
+			error("Value is nil")
+		end
 		return strsub(strlower(rowValue), 1, #value) == value
 	elseif operation == OPERATION.IS_NIL then
 		return rowValue == nil
@@ -250,8 +252,14 @@ function DatabaseQueryClause:_IsTrue(uuid, ignoreField)
 	elseif operation == OPERATION.FUNCTION then
 		return self._value(rowValue, self._extraArg) and true or false
 	elseif operation == OPERATION.IN_TABLE then
+		if not value then
+			error("Value is nil")
+		end
 		return value[rowValue] ~= nil
 	elseif operation == OPERATION.NOT_IN_TABLE then
+		if not value then
+			error("Value is nil")
+		end
 		return value[rowValue] == nil
 	elseif operation == OPERATION.LIST_CONTAINS then
 		for _, listValue in rowValue do

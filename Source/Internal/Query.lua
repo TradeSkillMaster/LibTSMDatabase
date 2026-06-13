@@ -106,7 +106,7 @@ function DatabaseQuery.__private:__init()
 	self._inUpdateCallback = false
 	self._iteratorState = ITERATOR_STATE.IDLE
 	self._iteratorType = ITERATOR_TYPE.UNOPTIMIZED
-	self._iteratorIndex = nil
+	self._iteratorIndex = nil ---@type number!
 	self._optimization = {
 		result = nil,
 		field = nil,
@@ -214,7 +214,8 @@ end
 ---@param fieldType `T` The type of the virtual field
 ---@param func fun(...: any): T A function which takes the arg field(s) and returns the value of the virtual field
 ---@param argField string|string[] The field (or list of fields) to pass into the function
----@param defaultValue? any The default value to use if the function returns nil
+---@param defaultValue? T The default value to use if the function returns nil
+---@overload fun(field: string, fieldType: `T`, func: fun(...: any): T?, argField: string|string[], defaultValue: T)
 ---@return self
 function DatabaseQuery:VirtualField(field, fieldType, func, argField, defaultValue)
 	if self._currentClause:_IgnoringSubClauses() then
@@ -222,8 +223,6 @@ function DatabaseQuery:VirtualField(field, fieldType, func, argField, defaultVal
 	end
 	if self:_HasField(field) or self._virtualFieldFunc[field] then
 		error("Field already exists: "..tostring(field))
-	elseif type(func) ~= "function" then
-		error("Invalid func: "..tostring(func))
 	elseif fieldType ~= "number" and fieldType ~= "string" and fieldType ~= "boolean" then
 		error("Field type must be string, number, or boolean")
 	elseif defaultValue ~= nil and type(defaultValue) ~= fieldType then
@@ -427,22 +426,9 @@ function DatabaseQuery:IsNil(field)
 	return self
 end
 
----Where a foreign field (obtained via a left join) is not nil.
----@param field string The name of the field
----@return self
-function DatabaseQuery:IsNotNil(field)
-	if self._currentClause:_IgnoringSubClauses() then
-		return self
-	end
-	assert(not self:_GetListFieldType(field), "Cannot use this method on list fields")
-	assert(self:_GetJoinType(field) == JOIN_TYPE.LEFT, "Must be a left join")
-	self:_NewClause(QueryClause.OPERATION.IS_NOT_NIL, field)
-	return self
-end
-
 ---A query clause which uses a function.
 ---@param field string The name of the field
----@param func fun(value: any, arg?: any): boolean The function which gets passed the field value and returns whether or not the query results should include it
+---@param func fun(value: any, arg?: any): boolean? The function which gets passed the field value and returns whether or not the query results should include it
 ---@param arg? any An extra argument to pass to the function
 ---@return self
 function DatabaseQuery:Function(field, func, arg)
@@ -498,6 +484,7 @@ function DatabaseQuery:ListContains(field, value)
 	return self
 end
 
+---@diagnostic disable: unused-function
 ---Starts a nested AND clause.
 ---
 ---All of the clauses following this (until the matching `:End()`) must be true for the AND clause to be true.
@@ -509,6 +496,7 @@ function DatabaseQuery:And()
 	self._currentClause = self:_NewClause(QueryClause.OPERATION.AND)
 	return self
 end
+---@diagnostic enable: unused-function
 
 ---Starts a nested OR clause.
 ---
@@ -937,20 +925,6 @@ function DatabaseQuery:Min(field)
 	return result
 end
 
----Gets the maximum value of a specific field within the query results (or nil if there are no results).
----@param field string The field within the results
----@return number|nil
-function DatabaseQuery:Max(field)
-	self:_Execute(EXECUTE_TYPE.UNORDERED)
-	local result = nil
-	for _, uuid in ipairs(self._result) do
-		local value = self:_GetResultRowData(uuid, field)
-		result = max(result or -math.huge, value)
-	end
-	self:_DoAutoRelease()
-	return result
-end
-
 ---Gets the summed value of a specific field within the query results.
 ---@param field string The field within the results
 ---@return number
@@ -976,20 +950,6 @@ function DatabaseQuery:GroupedSum(groupField, sumField, result)
 		result[group] = (result[group] or 0) + value
 	end
 	self:_DoAutoRelease()
-end
-
----Gets the average value of a specific field within the query results (or nil if there are no results).
----@param field string The field within the results
----@return number|nil
-function DatabaseQuery:Avg(field)
-	self:_Execute(EXECUTE_TYPE.UNORDERED)
-	local sum = 0
-	local num = self._result.count
-	for _, uuid in ipairs(self._result) do
-		sum = sum + self:_GetResultRowData(uuid, field)
-	end
-	self:_DoAutoRelease()
-	return num > 0 and (sum / num) or nil
 end
 
 ---Gets the sum of the products of two fields within the query results.
@@ -1063,23 +1023,6 @@ function DatabaseQuery:Reset()
 	self:ResetFilters()
 	self:_WipeResults()
 	self._resultState = RESULT_STATE.WIPED
-	return self
-end
-
----Resets any virtual fields added to the database query.
----@return self
-function DatabaseQuery:ResetVirtualFields()
-	assert(self._db)
-	for _, func in pairs(self._virtualFieldFunc) do
-		if private.smartMapReaderContext[func] then
-			private.smartMapReaderContext[func].query = nil
-		end
-	end
-	wipe(self._virtualFieldFunc)
-	wipe(self._virtualFieldArgField)
-	wipe(self._virtualFieldType)
-	wipe(self._virtualFieldDefault)
-	self._resultState = RESULT_STATE.STALE
 	return self
 end
 
