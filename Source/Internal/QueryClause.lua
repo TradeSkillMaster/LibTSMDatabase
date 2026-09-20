@@ -89,7 +89,7 @@ end
 
 
 -- ============================================================================
--- Class Method Methods
+-- Meta Class Methods
 -- ============================================================================
 
 function DatabaseQueryClause.__private:__init()
@@ -102,7 +102,7 @@ function DatabaseQueryClause.__private:__init()
 	self._boundValue = nil
 	self._extraArg = nil
 	-- Or / And
-	self._subClauses = {}
+	self._subClauses = {} ---@type DatabaseQueryClause[]
 end
 
 function DatabaseQueryClause.__private:_Acquire(query, parent, operation, ...)
@@ -274,92 +274,74 @@ function DatabaseQueryClause:_IsTrue(uuid, ignoreField)
 	end
 end
 
-function DatabaseQueryClause:_GetIndexValue(indexField)
+---@param ranges DatabaseIndexRanges
+function DatabaseQueryClause:_GetIndexRanges(indexField, ranges)
+	local mark = ranges:GetNumRanges()
+	if self._operation == OPERATION.OR then
+		if #self._subClauses == 0 then
+			return false
+		end
+		for _, subClause in ipairs(self._subClauses) do
+			if not subClause:_GetIndexRanges(indexField, ranges) then
+				ranges:TruncateTo(mark)
+				return false
+			end
+		end
+		return true
+	elseif self._operation == OPERATION.AND then
+		local isConstrained = false
+		for _, subClause in ipairs(self._subClauses) do
+			local subClauseMark = ranges:GetNumRanges()
+			if subClause:_GetIndexRanges(indexField, ranges) then
+				if isConstrained then
+					ranges:IntersectFrom(subClauseMark)
+					if ranges:GetNumRanges() == 0 then
+						return true
+					end
+				else
+					isConstrained = true
+				end
+			end
+		end
+		return isConstrained
+	elseif self._field ~= indexField or self._value == Util.CONSTANTS.OTHER_FIELD_QUERY_PARAM then
+		return false
+	end
+	local value = self._value
+	if value == Util.CONSTANTS.BOUND_QUERY_PARAM then
+		value = self._boundValue
+	end
+	value = Util.ToIndexValue(value)
+	local valueMin, valueMax = nil, nil
+	local isMinExclusive, isMaxExclusive = false, false
 	if self._operation == OPERATION.EQUAL then
-		if self._field ~= indexField then
-			return
-		end
-		if self._value == Util.CONSTANTS.OTHER_FIELD_QUERY_PARAM then
-			return
-		elseif self._value == Util.CONSTANTS.BOUND_QUERY_PARAM then
-			local result = Util.ToIndexValue(self._boundValue)
-			return result, result
-		else
-			local result = Util.ToIndexValue(self._value)
-			return result, result
-		end
+		valueMin, valueMax = value, value
 	elseif self._operation == OPERATION.LESS_OR_EQUAL then
-		if self._field ~= indexField then
-			return
-		end
-		if self._value == Util.CONSTANTS.OTHER_FIELD_QUERY_PARAM then
-			return
-		elseif self._value == Util.CONSTANTS.BOUND_QUERY_PARAM then
-			return nil, Util.ToIndexValue(self._boundValue)
-		else
-			return nil, Util.ToIndexValue(self._value)
-		end
+		valueMax = value
+	elseif self._operation == OPERATION.LESS then
+		valueMax = value
+		isMaxExclusive = true
 	elseif self._operation == OPERATION.GREATER_OR_EQUAL then
-		if self._field ~= indexField then
-			return
-		end
-		if self._value == Util.CONSTANTS.OTHER_FIELD_QUERY_PARAM then
-			return
-		elseif self._value == Util.CONSTANTS.BOUND_QUERY_PARAM then
-			return Util.ToIndexValue(self._boundValue), nil
-		else
-			return Util.ToIndexValue(self._value), nil
-		end
+		valueMin = value
+	elseif self._operation == OPERATION.GREATER then
+		valueMin = value
+		isMinExclusive = true
 	elseif self._operation == OPERATION.STARTS_WITH then
-		if self._field ~= indexField then
-			return
-		end
-		local minValue = nil
-		if self._value == Util.CONSTANTS.OTHER_FIELD_QUERY_PARAM then
-			return
-		elseif self._value == Util.CONSTANTS.BOUND_QUERY_PARAM then
-			minValue = Util.ToIndexValue(self._boundValue)
-		else
-			minValue = Util.ToIndexValue(self._value)
-		end
-		-- calculate the max value
-		assert(gsub(minValue, "\255", "") ~= "")
-		local maxValue = nil
-		for i = #minValue, 1, -1 do
-			if strsub(minValue, i, i) ~= "\255" then
-				maxValue = strsub(minValue, 1, i - 1)..strrep("\255", #minValue - i + 1)
+		-- Calculate the max value
+		assert(gsub(value, "\255", "") ~= "")
+		valueMin = value
+		for i = #value, 1, -1 do
+			if strsub(value, i, i) ~= "\255" then
+				valueMax = strsub(value, 1, i - 1)..strrep("\255", #value - i + 1)
 				break
 			end
 		end
-		return minValue, maxValue
-	elseif self._operation == OPERATION.OR then
-		local numSubClauses = #self._subClauses
-		if numSubClauses == 0 then
-			return
-		end
-		-- all of the subclauses need to support the same index
-		local valueMin, valueMax = self._subClauses[1]:_GetIndexValue(indexField)
-		for i = 2, numSubClauses do
-			local subClauseValueMin, subClauseValueMax = self._subClauses[i]:_GetIndexValue(indexField)
-			if subClauseValueMin ~= valueMin or subClauseValueMax ~= valueMax then
-				return
-			end
-		end
-		return valueMin, valueMax
-	elseif self._operation == OPERATION.AND then
-		-- get the most constrained range of index values from the subclauses
-		local valueMin, valueMax = nil, nil
-		for _, subClause in ipairs(self._subClauses) do
-			local subClauseValueMin, subClauseValueMax = subClause:_GetIndexValue(indexField)
-			if subClauseValueMin ~= nil and (valueMin == nil or subClauseValueMin > valueMin) then
-				valueMin = subClauseValueMin
-			end
-			if subClauseValueMax ~= nil and (valueMax == nil or subClauseValueMax < valueMax) then
-				valueMax = subClauseValueMax
-			end
-		end
-		return valueMin, valueMax
 	end
+	if valueMin == nil and valueMax == nil then
+		return false
+	end
+	ranges:AddBound(valueMin, valueMax, isMinExclusive, isMaxExclusive)
+	return true
 end
 
 function DatabaseQueryClause:_GetTrigramIndexValue(indexField)

@@ -504,7 +504,7 @@ function TestDatabase:TestFieldIndex()
 	local expectedIndex = 0
 	for _, rowNum in query5:Iterator("rowNum") do
 		assertTrue(query5._optimization.result == OPTIMIZAITON_RESULT.INDEX)
-		assertEquals(query5._optimization.field, "num1")
+		assertEquals(query5._optimization.field, "num2")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
 	end
@@ -1938,4 +1938,179 @@ function TestDatabase:TestIf()
 		:OrderBy("str", true)
 		:JoinedString("str2", ",")
 	assertEquals(result7, "c2")
+end
+
+function TestDatabase:TestIndexedStrictComparisons()
+	-- Create the DB
+	local db = Database.NewSchema("TEST")
+		:AddNumberField("rowNum")
+		:AddNumberField("num")
+		:AddIndex("num")
+		:Commit()
+
+	-- Add some rows
+	db:InsertRow(1, 10)
+	db:InsertRow(2, 20)
+	db:InsertRow(3, 20)
+	db:InsertRow(4, 30)
+	db:InsertRow(5, 40)
+
+	local query = db:NewOwnedQuery()
+		:GreaterThan("num", 20)
+	assertEquals(query:JoinedString("num", ","), "30,40")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertEquals(query._optimization.field, "num")
+	query:Release()
+
+	query = db:NewOwnedQuery()
+		:LessThan("num", 20)
+	assertEquals(query:JoinedString("num", ","), "10")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	query:Release()
+
+	assertEquals(db:NewAutoReleaseQuery():GreaterThanOrEqual("num", 20):JoinedString("num", ","), "20,20,30,40")
+	assertEquals(db:NewAutoReleaseQuery():LessThanOrEqual("num", 20):JoinedString("num", ","), "10,20,20")
+	assertEquals(db:NewAutoReleaseQuery():GreaterThan("num", 40):JoinedString("num", ","), "")
+	assertEquals(db:NewAutoReleaseQuery():LessThan("num", 10):JoinedString("num", ","), "")
+end
+
+function TestDatabase:TestIndexedRangeIntersection()
+	-- Create the DB
+	local db = Database.NewSchema("TEST")
+		:AddNumberField("rowNum")
+		:AddNumberField("num")
+		:AddIndex("num")
+		:Commit()
+
+	-- Add some rows
+	db:InsertRow(1, 10)
+	db:InsertRow(2, 20)
+	db:InsertRow(3, 20)
+	db:InsertRow(4, 30)
+	db:InsertRow(5, 40)
+
+	local query = db:NewOwnedQuery()
+		:GreaterThan("num", 10)
+		:LessThan("num", 40)
+	assertEquals(query:JoinedString("num", ","), "20,20,30")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	query:Release()
+
+	assertEquals(db:NewAutoReleaseQuery():GreaterThanOrEqual("num", 20):LessThan("num", 30):JoinedString("num", ","), "20,20")
+	assertEquals(db:NewAutoReleaseQuery():GreaterThan("num", 20):LessThanOrEqual("num", 30):JoinedString("num", ","), "30")
+	assertEquals(db:NewAutoReleaseQuery():GreaterThanOrEqual("num", 20):LessThanOrEqual("num", 20):JoinedString("num", ","), "20,20")
+
+	-- Contradictory bounds can never match, so the query is known to be empty
+	query = db:NewOwnedQuery()
+		:GreaterThan("num", 20)
+		:LessThan("num", 20)
+	assertEquals(query:JoinedString("num", ","), "")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.EMPTY)
+	query:Release()
+end
+
+function TestDatabase:TestIndexedOrRanges()
+	-- Create the DB
+	local db = Database.NewSchema("TEST")
+		:AddNumberField("rowNum")
+		:AddNumberField("num")
+		:AddIndex("num")
+		:Commit()
+
+	-- Add some rows
+	db:InsertRow(1, 10)
+	db:InsertRow(2, 20)
+	db:InsertRow(3, 20)
+	db:InsertRow(4, 30)
+	db:InsertRow(5, 40)
+
+	local query = db:NewOwnedQuery()
+		:Or()
+			:Equal("num", 10)
+			:GreaterThanOrEqual("num", 30)
+		:End()
+	assertEquals(query:JoinedString("num", ","), "10,30,40")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertEquals(query._optimization.field, "num")
+	query:Release()
+
+	query = db:NewOwnedQuery()
+		:Or()
+			:GreaterThan("num", 20)
+			:LessThan("num", 20)
+		:End()
+	assertEquals(query:JoinedString("num", ","), "10,30,40")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	query:Release()
+
+	-- Overlapping ranges must be merged rather than producing duplicate rows
+	query = db:NewOwnedQuery()
+		:Or()
+			:GreaterThanOrEqual("num", 20)
+			:GreaterThanOrEqual("num", 30)
+		:End()
+	assertEquals(query:JoinedString("num", ","), "20,20,30,40")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	query:Release()
+
+	-- Multiple ranges must still be walked in order
+	assertEquals(db:NewAutoReleaseQuery()
+		:Or()
+			:Equal("num", 10)
+			:GreaterThanOrEqual("num", 30)
+		:End()
+		:OrderBy("num", false)
+		:JoinedString("num", ","), "40,30,10")
+end
+
+function TestDatabase:TestIndexedOrRangesCombined()
+	-- Create the DB
+	local db = Database.NewSchema("TEST")
+		:AddNumberField("rowNum")
+		:AddNumberField("num")
+		:AddIndex("num")
+		:Commit()
+
+	-- Add some rows
+	db:InsertRow(1, 10)
+	db:InsertRow(2, 20)
+	db:InsertRow(3, 20)
+	db:InsertRow(4, 30)
+	db:InsertRow(5, 40)
+
+	-- An AND alongside a multi-range OR must narrow it rather than discarding the index
+	local query = db:NewOwnedQuery()
+		:GreaterThan("rowNum", 1)
+		:Or()
+			:Equal("num", 10)
+			:GreaterThanOrEqual("num", 30)
+		:End()
+	assertEquals(query:JoinedString("num", ","), "30,40")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertEquals(query._optimization.field, "num")
+	query:Release()
+
+	-- Intersecting two multi-range ORs on the same field
+	query = db:NewOwnedQuery()
+		:Or()
+			:LessThan("num", 20)
+			:GreaterThan("num", 20)
+		:End()
+		:Or()
+			:Equal("num", 10)
+			:Equal("num", 40)
+		:End()
+	assertEquals(query:JoinedString("num", ","), "10,40")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	query:Release()
+
+	-- A single unindexable branch makes the whole OR unindexable
+	query = db:NewOwnedQuery()
+		:Or()
+			:Equal("num", 10)
+			:Equal("rowNum", 5)
+		:End()
+	assertEquals(query:JoinedString("num", ","), "10,40")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+	query:Release()
 end
