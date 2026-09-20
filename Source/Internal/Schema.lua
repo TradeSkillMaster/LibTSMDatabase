@@ -31,7 +31,7 @@ end
 
 
 -- ============================================================================
--- Class Method Methods
+-- Meta Class Methods
 -- ============================================================================
 
 function DatabaseSchema.__private:__init()
@@ -155,7 +155,7 @@ end
 ---@return self
 function DatabaseSchema:AddIndex(fieldName)
 	local fieldType = self._fieldTypeLookup[fieldName]
-	assert(fieldType and fieldType ~= "STRING_LIST" and fieldType ~= "NUMBER_LIST" and not self._isIndex[fieldName])
+	assert(fieldType and fieldType ~= "STRING_LIST" and fieldType ~= "NUMBER_LIST" and fieldType ~= "ENUM" and not self._isIndex[fieldName])
 	self._isIndex[fieldName] = true
 	return self
 end
@@ -165,7 +165,7 @@ end
 ---@return self
 function DatabaseSchema:AddTrigramIndex(fieldName)
 	local fieldType = self._fieldTypeLookup[fieldName]
-	assert(fieldType and fieldType ~= "STRING_LIST" and fieldType ~= "NUMBER_LIST" and not self._trigramIndexField)
+	assert(fieldType and fieldType ~= "STRING_LIST" and fieldType ~= "NUMBER_LIST" and fieldType ~= "ENUM" and not self._trigramIndexField)
 	self._trigramIndexField = fieldName
 	return self
 end

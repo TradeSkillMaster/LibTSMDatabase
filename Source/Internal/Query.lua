@@ -12,6 +12,8 @@ local ObjectPool = LibTSMDatabase:From("LibTSMUtil"):IncludeClassType("ObjectPoo
 local EnumType = LibTSMDatabase:From("LibTSMUtil"):Include("BaseType.EnumType")
 local Iterator = LibTSMDatabase:From("LibTSMUtil"):Include("BaseType.Iterator")
 local Table = LibTSMDatabase:From("LibTSMUtil"):Include("Lua.Table")
+local IndexPositions = LibTSMDatabase:IncludeClassType("DatabaseIndexPositions")
+local IndexRanges = LibTSMDatabase:IncludeClassType("DatabaseIndexRanges")
 local Vararg = LibTSMDatabase:From("LibTSMUtil"):Include("Lua.Vararg")
 local Hash = LibTSMDatabase:From("LibTSMUtil"):Include("Util.Hash")
 local Reactive = LibTSMDatabase:From("LibTSMReactive"):Include("Reactive")
@@ -114,6 +116,9 @@ function DatabaseQuery.__private:__init()
 		value2 = nil,
 		strict = nil,
 	}
+	self._valueRanges = IndexRanges.New() ---@type DatabaseIndexRanges<string|number>
+	self._indexPositions = IndexPositions.New()
+	self._optimizationPositions = IndexPositions.New()
 	self._result = {
 		count = 0,
 	}
@@ -172,6 +177,9 @@ function DatabaseQuery.__private:_Release()
 	self._queuedUpdate = false
 	self._inUpdateCallback = false
 	wipe(self._iterDistinctUsed)
+	self._valueRanges:Wipe()
+	self._indexPositions:Wipe()
+	self._optimizationPositions:Wipe()
 	self._autoRelease = false
 	self._autoPause = false
 	self:_WipeResults()
@@ -1295,7 +1303,8 @@ function DatabaseQuery.__private:_Execute(executeType)
 		self:_Optimize()
 		if self._optimization.result == OPTIMIZAITON_RESULT.INDEX and self._optimization.strict and #self._joinDBs == 0 and not self._distinct then
 			self._resultState = RESULT_STATE.HAS_COUNT
-			self._result.count = self._optimization.value2 - self._optimization.value1 + 1
+			local firstIndex, lastIndex = self._optimizationPositions:GetRange(1)
+			self._result.count = lastIndex - firstIndex + 1
 		elseif self._optimization.result == OPTIMIZAITON_RESULT.EMPTY then
 			self._resultState = RESULT_STATE.HAS_COUNT
 			self._result.count = 0
@@ -1342,44 +1351,49 @@ end
 
 function DatabaseQuery.__private:_Optimize()
 	wipe(self._optimization)
+	self._optimizationPositions:Wipe()
 	-- Try to find the index with the least result rows
-	local indexField, indexFirstIndex, indexLastIndex, indexIsStrict = nil, nil, nil, false
+	local indexField, indexIsStrict = nil, false
 	local bestIndexDiff = math.huge
 	for _, field in self._db:_IndexOrUniqueFieldIterator() do
-		local valueMin, valueMax = self._rootClause:_GetIndexValue(field)
-		if valueMin == nil and valueMax == nil then
+		self._valueRanges:Wipe()
+		self._indexPositions:Wipe()
+		if not self._rootClause:_GetIndexRanges(field, self._valueRanges) then
 			-- Continue
-		elseif self._db:_IsUnique(field) and valueMin == valueMax then
-			-- Unique indexes result in a single row, at which point the benefit of trying to find something better (EMPTY) is negligible
-			self._optimization.result = OPTIMIZAITON_RESULT.UNIQUE
+		elseif self._valueRanges:GetNumRanges() == 0 then
+			-- The clauses can't all be satisfied, so this is as good as it gets
+			self._optimization.result = OPTIMIZAITON_RESULT.EMPTY
 			self._optimization.field = field
-			self._optimization.value1 = valueMin
-			return
-		elseif self._db:_IsIndex(field) then
-			-- Check how many rows this index results in
-			local indexList = self._db:_GetAllRowsByIndex(field)
-			local firstIndex, lastIndex = nil, nil
-			if valueMin and valueMax and valueMin == valueMax then
-				firstIndex, lastIndex = self._db:_GetIndexListMatchingIndexRange(field, valueMin)
-				if not firstIndex then
+			break
+		else
+			local valueMin, valueMax, isMinExclusive, isMaxExclusive = nil, nil, false, false
+			if self._valueRanges:GetNumRanges() == 1 then
+				for _, lowerBound, upperBound, lowerExclusive, upperExclusive in self._valueRanges:Iterator() do
+					valueMin = lowerBound
+					valueMax = upperBound
+					isMinExclusive = lowerExclusive
+					isMaxExclusive = upperExclusive
+					break
+				end
+			end
+			local isExactValue = valueMin ~= nil and valueMin == valueMax and not isMinExclusive and not isMaxExclusive
+			if self._db:_IsUnique(field) and isExactValue then
+				-- Unique indexes result in a single row, at which point the benefit of trying to find something better (EMPTY) is negligible
+				self._optimization.result = OPTIMIZAITON_RESULT.UNIQUE
+				self._optimization.field = field
+				self._optimization.value1 = valueMin
+				break
+			elseif self._db:_IsIndex(field) then
+				self:_GetIndexPositions(field)
+				if self._indexPositions:GetNumRanges() == 0 then
 					-- There are no results within this index, so this is as good as it gets
 					self._optimization.result = OPTIMIZAITON_RESULT.EMPTY
 					self._optimization.field = field
-					return
+					break
 				end
-			else
-				firstIndex = valueMin and self._db:_IndexListBinarySearch(field, valueMin, true) or min(1, #indexList)
-				lastIndex = valueMax and self._db:_IndexListBinarySearch(field, valueMax, false) or #indexList
-			end
-			local indexDiff = lastIndex - firstIndex
-			if indexDiff < 0 then
-				-- There are no results within this index, so this is as good as it gets
-				self._optimization.result = OPTIMIZAITON_RESULT.EMPTY
-				self._optimization.field = field
-				return
-			else
+				local indexDiff = self._indexPositions:GetNumPositions()
 				-- NOTE: String indexes can't be strict since they are case-insensitive
-				local isStrict = type(valueMin) ~= "string" and type(valueMax) ~= "string" and self._rootClause:_IsStrictIndex(field, valueMin, valueMax)
+				local isStrict = self._valueRanges:GetNumRanges() == 1 and type(valueMin) ~= "string" and type(valueMax) ~= "string" and self._rootClause:_IsStrictIndex(field, valueMin, valueMax)
 				if isStrict then
 					-- Rough estimate that being able to skip the query makes each row cost 1/4 as much
 					indexDiff = floor(indexDiff / 4)
@@ -1387,19 +1401,18 @@ function DatabaseQuery.__private:_Optimize()
 				if indexDiff < bestIndexDiff then
 					-- This is our new best index
 					indexField = field
-					indexFirstIndex = firstIndex
-					indexLastIndex = lastIndex
 					indexIsStrict = isStrict
 					bestIndexDiff = indexDiff
+					self._optimizationPositions:CopyFrom(self._indexPositions)
 				end
 			end
 		end
 	end
-	if indexField then
+	if self._optimization.result then
+		return
+	elseif indexField then
 		self._optimization.result = OPTIMIZAITON_RESULT.INDEX
 		self._optimization.field = indexField
-		self._optimization.value1 = indexFirstIndex
-		self._optimization.value2 = indexLastIndex
 		self._optimization.strict = indexIsStrict
 		return
 	end
@@ -1415,6 +1428,35 @@ function DatabaseQuery.__private:_Optimize()
 		end
 	end
 	self._optimization.result = OPTIMIZAITON_RESULT.NONE
+end
+
+function DatabaseQuery.__private:_GetIndexPositions(field)
+	local indexList = self._db:_GetAllRowsByIndex(field)
+	for _, valueMin, valueMax, isMinExclusive, isMaxExclusive in self._valueRanges:Iterator() do
+		local firstIndex, lastIndex = nil, nil
+		if valueMin ~= nil and valueMin == valueMax and not isMinExclusive and not isMaxExclusive then
+			firstIndex, lastIndex = self._db:_GetIndexListMatchingIndexRange(field, valueMin)
+		else
+			if valueMin == nil then
+				firstIndex = min(1, #indexList)
+			elseif isMinExclusive then
+				firstIndex = self._db:_IndexListBinarySearch(field, valueMin, false) + 1
+			else
+				firstIndex = self._db:_IndexListBinarySearch(field, valueMin, true)
+			end
+			if valueMax == nil then
+				lastIndex = #indexList
+			elseif isMaxExclusive then
+				lastIndex = self._db:_IndexListBinarySearch(field, valueMax, true) - 1
+			else
+				lastIndex = self._db:_IndexListBinarySearch(field, valueMax, false)
+			end
+		end
+		if firstIndex and lastIndex and lastIndex >= firstIndex then
+			self._indexPositions:AddRange(firstIndex, lastIndex)
+		end
+	end
+	self._indexPositions:SortAndMerge()
 end
 
 function DatabaseQuery.__private:_PopulateResults()
@@ -1442,7 +1484,16 @@ function DatabaseQuery.__private:_PopulateResults()
 			isAscending = self._orderByAscending[1]
 		end
 		local indexList = self._db:_GetAllRowsByIndex(self._optimization.field)
-		self:_AddResultRowsFromIndex(indexList, self._optimization.strict, self._optimization.value1, self._optimization.value2, isAscending, self._optimization.field)
+		local positions = self._optimizationPositions
+		local numRanges = positions:GetNumRanges()
+		local firstRange, lastRange, rangeStep = 1, numRanges, 1
+		if not isAscending then
+			firstRange, lastRange, rangeStep = numRanges, 1, -1
+		end
+		for i = firstRange, lastRange, rangeStep do
+			local firstIndex, lastIndex = positions:GetRange(i)
+			self:_AddResultRowsFromIndex(indexList, self._optimization.strict, firstIndex, lastIndex, isAscending, self._optimization.field)
+		end
 	elseif self._optimization.result == OPTIMIZAITON_RESULT.NONE then
 		if firstOrderBy and self._db:_IsIndex(firstOrderBy) then
 			-- We're ordering on an index, so use that index to iterate through all the rows in order to skip the first OrderBy field
