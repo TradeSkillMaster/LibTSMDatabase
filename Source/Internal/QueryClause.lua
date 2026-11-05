@@ -291,8 +291,8 @@ function DatabaseQueryClause:_GetIndexRanges(indexField, ranges)
 			local subClauseMark = ranges:GetNumRanges()
 			if subClause:_GetIndexRanges(indexField, ranges) then
 				if isConstrained then
-					ranges:IntersectFrom(subClauseMark)
-					if ranges:GetNumRanges() == 0 then
+					ranges:IntersectFrom(mark, subClauseMark)
+					if ranges:GetNumRanges() == mark then
 						return true
 					end
 				else

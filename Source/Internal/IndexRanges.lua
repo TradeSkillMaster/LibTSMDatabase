@@ -85,13 +85,14 @@ function DatabaseIndexRanges:TruncateTo(numRanges)
 	self._numRanges = numRanges
 end
 
----Replaces the ranges on either side of the specified marker with their intersection.
----@param mark number The previous number of ranges
-function DatabaseIndexRanges:IntersectFrom(mark)
+---Replaces the ranges after the start marker with the intersection of those on either side of the split marker.
+---@param startMark number The number of ranges to leave untouched
+---@param splitMark number The number of ranges before the second set being intersected
+function DatabaseIndexRanges:IntersectFrom(startMark, splitMark)
 	-- Append the intersection so the ranges it's built from can be read while doing so
 	local numRanges = self._numRanges
-	for i = 1, mark do
-		for j = mark + 1, numRanges do
+	for i = startMark + 1, splitMark do
+		for j = splitMark + 1, numRanges do
 			local lowerBound, isLowerExclusive = self:_IntersectLowerBounds(i, j)
 			local upperBound, isUpperExclusive = self:_IntersectUpperBounds(i, j)
 			if private.IsNonEmpty(lowerBound, upperBound, isLowerExclusive, isUpperExclusive) then
@@ -102,13 +103,14 @@ function DatabaseIndexRanges:IntersectFrom(mark)
 	-- Move the intersection down over those ranges
 	local numResults = self._numRanges - numRanges
 	for i = 1, numResults do
-		local index = numRanges + i
-		self._lowerBound[i] = self._lowerBound[index]
-		self._lowerIsExclusive[i] = self._lowerIsExclusive[index]
-		self._upperBound[i] = self._upperBound[index]
-		self._upperIsExclusive[i] = self._upperIsExclusive[index]
+		local srcIndex = numRanges + i
+		local dstIndex = startMark + i
+		self._lowerBound[dstIndex] = self._lowerBound[srcIndex]
+		self._lowerIsExclusive[dstIndex] = self._lowerIsExclusive[srcIndex]
+		self._upperBound[dstIndex] = self._upperBound[srcIndex]
+		self._upperIsExclusive[dstIndex] = self._upperIsExclusive[srcIndex]
 	end
-	self:TruncateTo(numResults)
+	self:TruncateTo(startMark + numResults)
 end
 
 ---Iterates over the ranges, where a nil bound is unbounded in that direction.
