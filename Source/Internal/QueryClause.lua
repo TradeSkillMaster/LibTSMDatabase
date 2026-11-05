@@ -479,6 +479,6 @@ function DatabaseQueryClause:_IgnoringSubClauses()
 	return not condition
 end
 
-function DatabaseQueryClause:_IsConditinal()
+function DatabaseQueryClause:_IsConditional()
 	return self._operation == OPERATION.IF
 end

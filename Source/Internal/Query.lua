@@ -43,7 +43,7 @@ local JOIN_TYPE = EnumType.New("DB_QUERY_JOIN_TYPE", {
 	LEFT = EnumType.NewValue(),
 	AGGREGATE_SUM = EnumType.NewValue(),
 })
-local OPTIMIZAITON_RESULT = EnumType.New("DB_QUERY_OPTIMIZATION_RESULT", {
+local OPTIMIZATION_RESULT = EnumType.New("DB_QUERY_OPTIMIZATION_RESULT", {
 	NONE = EnumType.NewValue(),
 	EMPTY = EnumType.NewValue(),
 	UNIQUE = EnumType.NewValue(),
@@ -498,7 +498,7 @@ end
 ---All of the clauses following this (until the matching `:End()`) must be true for the AND clause to be true.
 ---@return self
 function DatabaseQuery:And()
-	if self._currentClause:_IsConditinal() then
+	if self._currentClause:_IsConditional() then
 		error("Can't have nested clauses inside of a conditional")
 	end
 	self._currentClause = self:_NewClause(QueryClause.OPERATION.AND)
@@ -511,7 +511,7 @@ end
 ---At least one of the clauses following this (until the matching `:End()`) must be true for the OR clause to be true.
 ---@return self
 function DatabaseQuery:Or()
-	if self._currentClause:_IsConditinal() then
+	if self._currentClause:_IsConditional() then
 		error("Can't have nested clauses inside of a conditional")
 	end
 	self._currentClause = self:_NewClause(QueryClause.OPERATION.OR)
@@ -524,7 +524,7 @@ end
 ---@param condition boolean The condition
 ---@return self
 function DatabaseQuery:If(condition)
-	if self._currentClause:_IsConditinal() then
+	if self._currentClause:_IsConditional() then
 		error("Can't have nested clauses inside of a conditional")
 	end
 	self._currentClause = self:_NewClause(QueryClause.OPERATION.IF, condition)
@@ -543,7 +543,7 @@ end
 
 ---Starts an ELSE clause.
 ---
----Any clauses following this (until the matching `:End()`) are only added to the query (asart of the outer clause) if the prior IF condition is false.
+---Any clauses following this (until the matching `:End()`) are only added to the query (as part of the outer clause) if the prior IF condition is false.
 ---@return self
 function DatabaseQuery:Else()
 	self:_NewClause(QueryClause.OPERATION.ELSE)
@@ -565,7 +565,7 @@ end
 ---@param foreignField? string The foreign field to join on (defaults to `field`)
 ---@return self
 function DatabaseQuery:LeftJoin(db, field, foreignField)
-	if self._currentClause:_IsConditinal() then
+	if self._currentClause:_IsConditional() then
 		error("Can't have joins inside of conditionals")
 	end
 	self:_JoinHelper(JOIN_TYPE.LEFT, db, field, foreignField or field)
@@ -578,7 +578,7 @@ end
 ---@param foreignField? string The foreign field to join on (defaults to `field`)
 ---@return self
 function DatabaseQuery:InnerJoin(db, field, foreignField)
-	if self._currentClause:_IsConditinal() then
+	if self._currentClause:_IsConditional() then
 		error("Can't have joins inside of conditionals")
 	end
 	self:_JoinHelper(JOIN_TYPE.INNER, db, field, foreignField or field)
@@ -591,7 +591,7 @@ end
 ---@param sumField string The name of the field in the other table to sum
 ---@return self
 function DatabaseQuery:AggregateJoinSummed(db, field, sumField)
-	if self._currentClause:_IsConditinal() then
+	if self._currentClause:_IsConditional() then
 		error("Can't have joins inside of conditionals")
 	end
 	local query = db:NewOwnedQuery()
@@ -1301,11 +1301,11 @@ function DatabaseQuery.__private:_Execute(executeType)
 	-- Run the optimization if needed
 	if self._resultState == RESULT_STATE.WIPED then
 		self:_Optimize()
-		if self._optimization.result == OPTIMIZAITON_RESULT.INDEX and self._optimization.strict and #self._joinDBs == 0 and not self._distinct then
+		if self._optimization.result == OPTIMIZATION_RESULT.INDEX and self._optimization.strict and #self._joinDBs == 0 and not self._distinct then
 			self._resultState = RESULT_STATE.HAS_COUNT
 			local firstIndex, lastIndex = self._optimizationPositions:GetRange(1)
 			self._result.count = lastIndex - firstIndex + 1
-		elseif self._optimization.result == OPTIMIZAITON_RESULT.EMPTY then
+		elseif self._optimization.result == OPTIMIZATION_RESULT.EMPTY then
 			self._resultState = RESULT_STATE.HAS_COUNT
 			self._result.count = 0
 		end
@@ -1362,7 +1362,7 @@ function DatabaseQuery.__private:_Optimize()
 			-- Continue
 		elseif self._valueRanges:GetNumRanges() == 0 then
 			-- The clauses can't all be satisfied, so this is as good as it gets
-			self._optimization.result = OPTIMIZAITON_RESULT.EMPTY
+			self._optimization.result = OPTIMIZATION_RESULT.EMPTY
 			self._optimization.field = field
 			break
 		else
@@ -1379,7 +1379,7 @@ function DatabaseQuery.__private:_Optimize()
 			local isExactValue = valueMin ~= nil and valueMin == valueMax and not isMinExclusive and not isMaxExclusive
 			if self._db:_IsUnique(field) and isExactValue then
 				-- Unique indexes result in a single row, at which point the benefit of trying to find something better (EMPTY) is negligible
-				self._optimization.result = OPTIMIZAITON_RESULT.UNIQUE
+				self._optimization.result = OPTIMIZATION_RESULT.UNIQUE
 				self._optimization.field = field
 				self._optimization.value1 = valueMin
 				break
@@ -1387,7 +1387,7 @@ function DatabaseQuery.__private:_Optimize()
 				self:_GetIndexPositions(field)
 				if self._indexPositions:GetNumRanges() == 0 then
 					-- There are no results within this index, so this is as good as it gets
-					self._optimization.result = OPTIMIZAITON_RESULT.EMPTY
+					self._optimization.result = OPTIMIZATION_RESULT.EMPTY
 					self._optimization.field = field
 					break
 				end
@@ -1411,7 +1411,7 @@ function DatabaseQuery.__private:_Optimize()
 	if self._optimization.result then
 		return
 	elseif indexField then
-		self._optimization.result = OPTIMIZAITON_RESULT.INDEX
+		self._optimization.result = OPTIMIZATION_RESULT.INDEX
 		self._optimization.field = indexField
 		self._optimization.strict = indexIsStrict
 		return
@@ -1421,13 +1421,13 @@ function DatabaseQuery.__private:_Optimize()
 	if trigramIndexField then
 		local trigramIndexValue = self._rootClause:_GetTrigramIndexValue(trigramIndexField)
 		if trigramIndexValue then
-			self._optimization.result = OPTIMIZAITON_RESULT.TRIGRAM
+			self._optimization.result = OPTIMIZATION_RESULT.TRIGRAM
 			self._optimization.field = trigramIndexField
 			self._optimization.value1 = trigramIndexValue
 			return
 		end
 	end
-	self._optimization.result = OPTIMIZAITON_RESULT.NONE
+	self._optimization.result = OPTIMIZATION_RESULT.NONE
 end
 
 function DatabaseQuery.__private:_GetIndexPositions(field)
@@ -1464,9 +1464,9 @@ function DatabaseQuery.__private:_PopulateResults()
 
 	local firstOrderBy = self._orderBy[1]
 	local sortNeeded = firstOrderBy and true or false
-	if self._optimization.result == OPTIMIZAITON_RESULT.EMPTY then
+	if self._optimization.result == OPTIMIZATION_RESULT.EMPTY then
 		sortNeeded = false
-	elseif self._optimization.result == OPTIMIZAITON_RESULT.UNIQUE then
+	elseif self._optimization.result == OPTIMIZATION_RESULT.UNIQUE then
 		-- We are looking for a unique row
 		local uuid = self._db:_GetUniqueRow(self._optimization.field, self._optimization.value1)
 		if uuid and self:_ResultShouldIncludeRow(uuid, false, #self._joinDBs, self._distinct) then
@@ -1474,12 +1474,12 @@ function DatabaseQuery.__private:_PopulateResults()
 			self._result.count = 1
 		end
 		sortNeeded = false
-	elseif self._optimization.result == OPTIMIZAITON_RESULT.INDEX then
+	elseif self._optimization.result == OPTIMIZATION_RESULT.INDEX then
 		-- We're querying on an index, so use that index to populate the result
 		local isAscending = true
 		if firstOrderBy and self._optimization.field == firstOrderBy then
 			-- We're also ordering by this field so can skip the first OrderBy field
-			self._optimization.result = OPTIMIZAITON_RESULT.INDEX_AND_ORDER_BY
+			self._optimization.result = OPTIMIZATION_RESULT.INDEX_AND_ORDER_BY
 			sortNeeded = #self._orderBy > 1
 			isAscending = self._orderByAscending[1]
 		end
@@ -1494,10 +1494,10 @@ function DatabaseQuery.__private:_PopulateResults()
 			local firstIndex, lastIndex = positions:GetRange(i)
 			self:_AddResultRowsFromIndex(indexList, self._optimization.strict, firstIndex, lastIndex, isAscending)
 		end
-	elseif self._optimization.result == OPTIMIZAITON_RESULT.NONE then
+	elseif self._optimization.result == OPTIMIZATION_RESULT.NONE then
 		if firstOrderBy and self._db:_IsIndex(firstOrderBy) then
 			-- We're ordering on an index, so use that index to iterate through all the rows in order to skip the first OrderBy field
-			self._optimization.result = OPTIMIZAITON_RESULT.ORDER_BY
+			self._optimization.result = OPTIMIZATION_RESULT.ORDER_BY
 			self._optimization.field = firstOrderBy
 			sortNeeded = #self._orderBy > 1
 			local isAscending = self._orderByAscending[1]
@@ -1507,7 +1507,7 @@ function DatabaseQuery.__private:_PopulateResults()
 			-- No optimizations
 			self:_AddResultRowsCheckAll()
 		end
-	elseif self._optimization.result == OPTIMIZAITON_RESULT.TRIGRAM then
+	elseif self._optimization.result == OPTIMIZATION_RESULT.TRIGRAM then
 		assert(not next(private.resultTemp))
 		self._db:_GetTrigramIndexMatchingRows(self._optimization.value1, private.resultTemp)
 		self:_AddResultRowsFromIndex(private.resultTemp, false, 1, #private.resultTemp, true)
@@ -1525,7 +1525,7 @@ function DatabaseQuery.__private:_PopulateResults()
 end
 
 function DatabaseQuery.__private:_SortResults()
-	local skipFirstOrderBy = self._optimization.result == OPTIMIZAITON_RESULT.INDEX_AND_ORDER_BY or self._optimization.result == OPTIMIZAITON_RESULT.ORDER_BY
+	local skipFirstOrderBy = self._optimization.result == OPTIMIZATION_RESULT.INDEX_AND_ORDER_BY or self._optimization.result == OPTIMIZATION_RESULT.ORDER_BY
 	if #self._orderBy == 1 then
 		assert(not skipFirstOrderBy)
 		assert(not next(self._sortValueCache))

@@ -6,7 +6,7 @@ local SmartMap = LibTSMDatabase:From("LibTSMUtil"):IncludeClassType("SmartMap")
 local EnumType = LibTSMDatabase:From("LibTSMUtil"):Include("BaseType.EnumType")
 local Hash = LibTSMDatabase:From("LibTSMUtil"):Include("Util.Hash")
 local RESULT_STATE = Locals["LibTSMDatabase.Internal.Query"].RESULT_STATE
-local OPTIMIZAITON_RESULT = Locals["LibTSMDatabase.Internal.Query"].OPTIMIZAITON_RESULT
+local OPTIMIZATION_RESULT = Locals["LibTSMDatabase.Internal.Query"].OPTIMIZATION_RESULT
 
 
 
@@ -57,7 +57,7 @@ function TestDatabase:TestEmptyQuery()
 	assertEquals(query:Count(), 2)
 	local foundRows = {}
 	for _, rowNum in query:Iterator("rowNum") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		assertTrue(rowNum == 1 or rowNum == 2)
 		foundRows[rowNum] = (foundRows[rowNum] or 0) + 1
 	end
@@ -82,7 +82,7 @@ function TestDatabase:TestEqualQuery()
 	assertEquals(query:Count(), 1)
 	local found = false
 	for _, rowNum in query:Iterator("rowNum") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		assertEquals(rowNum, 1)
 		assert(not found)
 		found = true
@@ -108,7 +108,7 @@ function TestDatabase:TestSortQuery()
 	local expected = { 2, 1, 3, 4 }
 	local expectedIndex = 0
 	for _, rowNum in query:Iterator("rowNum") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
 	end
@@ -121,7 +121,7 @@ function TestDatabase:TestSortQuery()
 	local expected = { 3, 1, 2, 4 }
 	local expectedIndex = 0
 	for _, rowNum in query:Iterator("rowNum") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
 	end
@@ -150,7 +150,7 @@ function TestDatabase:TestMultipleSortQuery()
 	local index1 = 0
 	for _, num2 in query:Iterator("num2") do
 		index1 = index1 + 1
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		assertEquals(num2, expectedNum1[index1])
 	end
 	query:Release()
@@ -163,7 +163,7 @@ function TestDatabase:TestMultipleSortQuery()
 	local expectedNum2 = { 1, 6, 5 }
 	for _, num2 in query:Iterator("num2") do
 		index2 = index2 + 1
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		assertEquals(num2, expectedNum2[index2])
 	end
 	query:Release()
@@ -269,7 +269,7 @@ function TestDatabase:TestQueryAndOr()
 	assertEquals(query1:Count(), 1)
 	local expectedIndex = 0
 	for _, rowNum in query1:Iterator("rowNum") do
-		assertTrue(query1._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query1._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, 1)
 	end
@@ -295,7 +295,7 @@ function TestDatabase:TestQueryAndOr()
 	assertEquals(query2:Count(), 1)
 	local expectedIndex = 0
 	for _, rowNum in query2:Iterator("rowNum") do
-		assertTrue(query2._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query2._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, 1)
 	end
@@ -319,7 +319,7 @@ function TestDatabase:TestQueryComparisons()
 	assertEquals(query1:Count(), 1)
 	local expectedIndex = 0
 	for _, num in query1:Iterator("num") do
-		assertTrue(query1._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query1._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(num, 1)
 	end
@@ -331,7 +331,7 @@ function TestDatabase:TestQueryComparisons()
 	assertEquals(query2:Count(), 1)
 	local expectedIndex = 0
 	for _, num in query2:Iterator("num") do
-		assertTrue(query2._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query2._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(num, 3)
 	end
@@ -345,7 +345,7 @@ function TestDatabase:TestQueryComparisons()
 	local expected = { 1, 2 }
 	local expectedIndex = 0
 	for _, num in query3:Iterator("num") do
-		assertTrue(query3._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query3._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(num, expected[expectedIndex])
 	end
@@ -359,7 +359,7 @@ function TestDatabase:TestQueryComparisons()
 	local expected = { 2, 3 }
 	local expectedIndex = 0
 	for _, num in query4:Iterator("num") do
-		assertTrue(query4._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query4._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(num, expected[expectedIndex])
 	end
@@ -372,7 +372,7 @@ function TestDatabase:TestQueryComparisons()
 	assertEquals(query5:Count(), 1)
 	local expectedIndex = 0
 	for _, num in query5:Iterator("num") do
-		assertTrue(query5._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query5._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(num, 2)
 	end
@@ -399,7 +399,7 @@ function TestDatabase:TestOtherField()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, num in query:Iterator("num") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(num, expected[expectedIndex])
 	end
@@ -412,7 +412,7 @@ function TestDatabase:TestOtherField()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, num in query:Iterator("num") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(num, expected[expectedIndex])
 	end
@@ -442,7 +442,7 @@ function TestDatabase:TestFieldIndex()
 	assertEquals(query1:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query1:Iterator("rowNum") do
-		assertTrue(query1._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query1._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		assertEquals(query1._optimization.field, "num1")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -458,7 +458,7 @@ function TestDatabase:TestFieldIndex()
 	assertEquals(query2:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query2:Iterator("rowNum") do
-		assertTrue(query2._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query2._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		assertEquals(query2._optimization.field, "num1")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -473,7 +473,7 @@ function TestDatabase:TestFieldIndex()
 	assertEquals(query3:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query3:Iterator("rowNum") do
-		assertTrue(query3._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query3._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		assertEquals(query3._optimization.field, "num1")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -488,7 +488,7 @@ function TestDatabase:TestFieldIndex()
 	assertEquals(query4:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query4:Iterator("rowNum") do
-		assertTrue(query4._optimization.result == OPTIMIZAITON_RESULT.INDEX_AND_ORDER_BY)
+		assertTrue(query4._optimization.result == OPTIMIZATION_RESULT.INDEX_AND_ORDER_BY)
 		assertEquals(query4._optimization.field, "num1")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -503,7 +503,7 @@ function TestDatabase:TestFieldIndex()
 	assertEquals(query5:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query5:Iterator("rowNum") do
-		assertTrue(query5._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query5._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		assertEquals(query5._optimization.field, "num2")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -517,7 +517,7 @@ function TestDatabase:TestFieldIndex()
 	assertEquals(query6:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query6:Iterator("rowNum") do
-		assertTrue(query6._optimization.result == OPTIMIZAITON_RESULT.ORDER_BY)
+		assertTrue(query6._optimization.result == OPTIMIZATION_RESULT.ORDER_BY)
 		assertEquals(query6._optimization.field, "num1")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -536,7 +536,7 @@ function TestDatabase:TestFieldIndex()
 	assertEquals(query8:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query8:Iterator("rowNum") do
-		assertTrue(query8._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query8._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		assertEquals(query8._optimization.field, "num2")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -565,7 +565,7 @@ function TestDatabase:TestFieldUnique()
 	assertEquals(query1:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query1:Iterator("rowNum") do
-		assertTrue(query1._optimization.result == OPTIMIZAITON_RESULT.UNIQUE)
+		assertTrue(query1._optimization.result == OPTIMIZATION_RESULT.UNIQUE)
 		assertEquals(query1._optimization.field, "uniqueNum")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -585,7 +585,7 @@ function TestDatabase:TestFieldUnique()
 	assertEquals(query3:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query3:Iterator("rowNum") do
-		assertTrue(query3._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query3._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		assertEquals(query3._optimization.field, "num2")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -599,7 +599,7 @@ function TestDatabase:TestFieldUnique()
 	assertEquals(query4:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query4:Iterator("rowNum") do
-		assertTrue(query4._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query4._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
 	end
@@ -613,7 +613,7 @@ function TestDatabase:TestFieldUnique()
 	assertEquals(query5:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query5:Iterator("rowNum") do
-		assertTrue(query5._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query5._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
 	end
@@ -628,7 +628,7 @@ function TestDatabase:TestFieldUnique()
 	assertEquals(query6:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query6:Iterator("rowNum") do
-		assertTrue(query6._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query6._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		assertEquals(query6._optimization.field, "num2")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -644,7 +644,7 @@ function TestDatabase:TestFieldUnique()
 	assertEquals(query7:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query7:Iterator("rowNum") do
-		assertTrue(query7._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query7._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		assertEquals(query7._optimization.field, "num2")
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
@@ -679,7 +679,7 @@ function TestDatabase:TestBoundParams()
 	assertEquals(query1:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query1:Iterator("rowNum") do
-		assertTrue(query1._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query1._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
 	end
@@ -692,7 +692,7 @@ function TestDatabase:TestBoundParams()
 	assertEquals(query1:Count(), #expected)
 	local expectedIndex = 0
 	for _, rowNum in query1:Iterator("rowNum") do
-		assertTrue(query1._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query1._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(rowNum, expected[expectedIndex])
 	end
@@ -729,7 +729,7 @@ function TestDatabase:TestDelete()
 	assertEquals(query1:Count(), #expected)
 	local expectedIndex = 1
 	for _, rowNum in query1:Iterator("rowNum") do
-		assertTrue(query1._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query1._optimization.result == OPTIMIZATION_RESULT.NONE)
 		assertEquals(rowNum, expected[expectedIndex])
 		expectedIndex = expectedIndex + 1
 	end
@@ -775,7 +775,7 @@ function TestDatabase:TestLeftJoin()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, timestamp, name in query:Iterator("timestamp", "name") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(timestamp, expected[expectedIndex].timestamp)
 		assertEquals(name, expected[expectedIndex].name)
@@ -794,7 +794,7 @@ function TestDatabase:TestLeftJoin()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, timestamp, name in query:Iterator("timestamp", "name") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		expectedIndex = expectedIndex + 1
 		assertEquals(timestamp, expected[expectedIndex].timestamp)
 		assertEquals(name, expected[expectedIndex].name)
@@ -821,7 +821,7 @@ function TestDatabase:TestLeftJoin()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, timestamp, name in query:Iterator("timestamp", "name") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(timestamp, expected[expectedIndex].timestamp)
 		assertEquals(name, expected[expectedIndex].name)
@@ -839,7 +839,7 @@ function TestDatabase:TestLeftJoin()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _,  name in query:Iterator("name") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(name, expected[expectedIndex].name)
 	end
@@ -891,7 +891,7 @@ function TestDatabase:TestInnerJoin()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, timestamp, name in query:Iterator("timestamp", "name") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(timestamp, expected[expectedIndex].timestamp)
 		assertEquals(name, expected[expectedIndex].name)
@@ -910,7 +910,7 @@ function TestDatabase:TestInnerJoin()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, timestamp, name in query:Iterator("timestamp", "name") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 		expectedIndex = expectedIndex + 1
 		assertEquals(timestamp, expected[expectedIndex].timestamp)
 		assertEquals(name, expected[expectedIndex].name)
@@ -961,7 +961,7 @@ function TestDatabase:TestInnerJoin()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, timestamp, name in query:Iterator("timestamp", "name") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(timestamp, expected[expectedIndex].timestamp)
 		assertEquals(name, expected[expectedIndex].name)
@@ -979,7 +979,7 @@ function TestDatabase:TestInnerJoin()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, timestamp, name in query:Iterator("timestamp", "name") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(timestamp, expected[expectedIndex].timestamp)
 		assertEquals(name, expected[expectedIndex].name)
@@ -1034,7 +1034,7 @@ function TestDatabase:TestMultiJoin()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, timestamp, name, quantity in query:Iterator("timestamp", "name", "quantity") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(timestamp, expected[expectedIndex].timestamp)
 		assertEquals(name, expected[expectedIndex].name)
@@ -1080,7 +1080,7 @@ function TestDatabase:TestAggregateJoinSummed()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, itemId, name, quantity in query:Iterator("itemId", "name", "quantity") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(itemId, expected[expectedIndex].itemId)
 		assertEquals(name, expected[expectedIndex].name)
@@ -1112,7 +1112,7 @@ function TestDatabase:TestAggregateJoinSummed()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, itemId, name, quantity in query:Iterator("itemId", "name", "quantity") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(itemId, expected[expectedIndex].itemId)
 		assertEquals(name, expected[expectedIndex].name)
@@ -1255,7 +1255,7 @@ function TestDatabase:TestBulkInsert()
 	assertEquals(query:Count(), #expected)
 	local expectedIndex = 0
 	for _, num in query:Iterator("num2") do
-		assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.ORDER_BY)
+		assertTrue(query._optimization.result == OPTIMIZATION_RESULT.ORDER_BY)
 		expectedIndex = expectedIndex + 1
 		assertEquals(num, expected[expectedIndex])
 	end
@@ -1279,7 +1279,7 @@ function TestDatabase:TestBulkInsert()
 	assertEquals(query2:Count(), #expected2)
 	local expectedIndex = 0
 	for _, num in query2:Iterator("num2") do
-		assertTrue(query2._optimization.result == OPTIMIZAITON_RESULT.ORDER_BY)
+		assertTrue(query2._optimization.result == OPTIMIZATION_RESULT.ORDER_BY)
 		expectedIndex = expectedIndex + 1
 		assertEquals(num, expected2[expectedIndex])
 	end
@@ -1429,7 +1429,7 @@ function TestDatabase:TestSmartMapField()
 		:Equal("autoBaseItemString", "i:2")
 	local expected = { 2 }
 	assertEquals(query2:Count(), #expected)
-	assertTrue(query2._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertTrue(query2._optimization.result == OPTIMIZATION_RESULT.INDEX)
 	assertEquals(query2._optimization.field, "autoBaseItemString")
 	local expectedIndex = 0
 	for _, num in query2:Iterator("num") do
@@ -1451,7 +1451,7 @@ function TestDatabase:TestSmartMapField()
 		:OrderBy("autoBaseItemString", true)
 	local expected = { 1, 2, 3 }
 	assertEquals(query3:Count(), #expected)
-	assertTrue(query3._optimization.result == OPTIMIZAITON_RESULT.ORDER_BY)
+	assertTrue(query3._optimization.result == OPTIMIZATION_RESULT.ORDER_BY)
 	assertEquals(query3._optimization.field, "autoBaseItemString")
 	local expectedIndex = 0
 	for _, num in query3:Iterator("num") do
@@ -1464,7 +1464,7 @@ function TestDatabase:TestSmartMapField()
 	map:ValueChanged("i:2:-2")
 	local expected = { 1, 3, 2 }
 	assertEquals(query3:Count(), #expected)
-	assertTrue(query3._optimization.result == OPTIMIZAITON_RESULT.ORDER_BY)
+	assertTrue(query3._optimization.result == OPTIMIZATION_RESULT.ORDER_BY)
 	assertEquals(query3._optimization.field, "autoBaseItemString")
 	local expectedIndex = 0
 	for _, num in query3:Iterator("num") do
@@ -1491,7 +1491,7 @@ function TestDatabase:TestSmartMapField()
 		:OrderBy("autoBaseItemString", true)
 	local expected = { "a", "c" }
 	assertEquals(query4:Count(), #expected)
-	assertTrue(query4._optimization.result == OPTIMIZAITON_RESULT.ORDER_BY)
+	assertTrue(query4._optimization.result == OPTIMIZATION_RESULT.ORDER_BY)
 	assertEquals(query4._optimization.field, "autoBaseItemString")
 	local expectedIndex = 0
 	for _, num in query4:Iterator("str") do
@@ -1566,7 +1566,7 @@ function TestDatabase:TestTrigramIndex()
 		:Contains("str", "Ace of")
 	assertEquals(query1:Count(), 3)
 	assertEquals(query1:Sum("num"), 7)
-	assertTrue(query1._optimization.result == OPTIMIZAITON_RESULT.TRIGRAM)
+	assertTrue(query1._optimization.result == OPTIMIZATION_RESULT.TRIGRAM)
 	assertEquals(query1._optimization.field, "str")
 	query1:Release()
 
@@ -1574,7 +1574,7 @@ function TestDatabase:TestTrigramIndex()
 		:Contains("str", "Ace of H")
 	assertEquals(query2:Count(), 1)
 	assertEquals(query2:Sum("num"), 4)
-	assertTrue(query2._optimization.result == OPTIMIZAITON_RESULT.TRIGRAM)
+	assertTrue(query2._optimization.result == OPTIMIZATION_RESULT.TRIGRAM)
 	assertEquals(query2._optimization.field, "str")
 	query2:Release()
 end
@@ -1625,7 +1625,7 @@ function TestDatabase:TestList()
 	assertEquals(query1:Count(), 1)
 	local found = false
 	for _, id in query1:Iterator("id") do
-		assertTrue(query1._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query1._optimization.result == OPTIMIZATION_RESULT.NONE)
 		assertEquals(id, 2)
 		assert(not found)
 		found = true
@@ -1639,7 +1639,7 @@ function TestDatabase:TestList()
 	local expected = { 2, 3 }
 	local expectedIndex = 0
 	for _, id in query2:Iterator("id") do
-		assertTrue(query2._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query2._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(id, expected[expectedIndex])
 	end
@@ -1664,7 +1664,7 @@ function TestDatabase:TestList()
 	local expected = { "2a,2b,common", "3a,common,3b" }
 	local expectedIndex = 0
 	for _, res in query4:Iterator("joinedStrs") do
-		assertTrue(query4._optimization.result == OPTIMIZAITON_RESULT.NONE)
+		assertTrue(query4._optimization.result == OPTIMIZATION_RESULT.NONE)
 		expectedIndex = expectedIndex + 1
 		assertEquals(res, expected[expectedIndex])
 	end
@@ -1958,14 +1958,14 @@ function TestDatabase:TestIndexedStrictComparisons()
 	local query = db:NewOwnedQuery()
 		:GreaterThan("num", 20)
 	assertEquals(query:JoinedString("num", ","), "30,40")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 	assertEquals(query._optimization.field, "num")
 	query:Release()
 
 	query = db:NewOwnedQuery()
 		:LessThan("num", 20)
 	assertEquals(query:JoinedString("num", ","), "10")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 	query:Release()
 
 	assertEquals(db:NewAutoReleaseQuery():GreaterThanOrEqual("num", 20):JoinedString("num", ","), "20,20,30,40")
@@ -1993,7 +1993,7 @@ function TestDatabase:TestIndexedRangeIntersection()
 		:GreaterThan("num", 10)
 		:LessThan("num", 40)
 	assertEquals(query:JoinedString("num", ","), "20,20,30")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 	query:Release()
 
 	assertEquals(db:NewAutoReleaseQuery():GreaterThanOrEqual("num", 20):LessThan("num", 30):JoinedString("num", ","), "20,20")
@@ -2005,7 +2005,7 @@ function TestDatabase:TestIndexedRangeIntersection()
 		:GreaterThan("num", 20)
 		:LessThan("num", 20)
 	assertEquals(query:JoinedString("num", ","), "")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.EMPTY)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.EMPTY)
 	query:Release()
 end
 
@@ -2030,7 +2030,7 @@ function TestDatabase:TestIndexedOrRanges()
 			:GreaterThanOrEqual("num", 30)
 		:End()
 	assertEquals(query:JoinedString("num", ","), "10,30,40")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 	assertEquals(query._optimization.field, "num")
 	query:Release()
 
@@ -2040,7 +2040,7 @@ function TestDatabase:TestIndexedOrRanges()
 			:LessThan("num", 20)
 		:End()
 	assertEquals(query:JoinedString("num", ","), "10,30,40")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 	query:Release()
 
 	-- Overlapping ranges must be merged rather than producing duplicate rows
@@ -2050,7 +2050,7 @@ function TestDatabase:TestIndexedOrRanges()
 			:GreaterThanOrEqual("num", 30)
 		:End()
 	assertEquals(query:JoinedString("num", ","), "20,20,30,40")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 	query:Release()
 
 	-- Multiple ranges must still be walked in order
@@ -2086,7 +2086,7 @@ function TestDatabase:TestIndexedOrRangesCombined()
 			:GreaterThanOrEqual("num", 30)
 		:End()
 	assertEquals(query:JoinedString("num", ","), "30,40")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 	assertEquals(query._optimization.field, "num")
 	query:Release()
 
@@ -2101,7 +2101,7 @@ function TestDatabase:TestIndexedOrRangesCombined()
 			:Equal("num", 40)
 		:End()
 	assertEquals(query:JoinedString("num", ","), "10,40")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.INDEX)
 	query:Release()
 
 	-- A single unindexable branch makes the whole OR unindexable
@@ -2111,7 +2111,7 @@ function TestDatabase:TestIndexedOrRangesCombined()
 			:Equal("rowNum", 5)
 		:End()
 	assertEquals(query:JoinedString("num", ","), "10,40")
-	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
+	assertTrue(query._optimization.result == OPTIMIZATION_RESULT.NONE)
 	query:Release()
 end
 
