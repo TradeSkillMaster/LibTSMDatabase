@@ -197,10 +197,7 @@ function DatabaseQueryClause:_EndSubClause()
 	return parent
 end
 
-function DatabaseQueryClause:_IsTrue(uuid, ignoreField)
-	if ignoreField and self._field == ignoreField then
-		return true
-	end
+function DatabaseQueryClause:_IsTrue(uuid)
 	local value = self._value
 	if value == Util.CONSTANTS.BOUND_QUERY_PARAM then
 		value = self._boundValue
@@ -210,14 +207,14 @@ function DatabaseQueryClause:_IsTrue(uuid, ignoreField)
 	local operation = self._operation
 	if operation == OPERATION.OR then
 		for i = 1, #self._subClauses do
-			if self._subClauses[i]:_IsTrue(uuid, ignoreField) then
+			if self._subClauses[i]:_IsTrue(uuid) then
 				return true
 			end
 		end
 		return false
 	elseif operation == OPERATION.AND then
 		for i = 1, #self._subClauses do
-			if not self._subClauses[i]:_IsTrue(uuid, ignoreField) then
+			if not self._subClauses[i]:_IsTrue(uuid) then
 				return false
 			end
 		end

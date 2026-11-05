@@ -2114,3 +2114,33 @@ function TestDatabase:TestIndexedOrRangesCombined()
 	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.NONE)
 	query:Release()
 end
+
+function TestDatabase:TestIndexedStringClauses()
+	-- Create the DB
+	local db = Database.NewSchema("TEST")
+		:AddNumberField("rowNum")
+		:AddStringField("path")
+		:AddIndex("path")
+		:Commit()
+
+	-- Add some rows
+	db:InsertRow(1, "A`Tier 1")
+	db:InsertRow(2, "A`Tier 1`Sub")
+	db:InsertRow(3, "A`Tier 10")
+	db:InsertRow(4, "A`Tier 2")
+
+	local query = db:NewOwnedQuery()
+		:StartsWith("path", "A`Tier 1")
+		:OrderBy("rowNum", true)
+	assertEquals(query:JoinedString("rowNum", ","), "1,2,3")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	query:Release()
+
+	query = db:NewOwnedQuery()
+		:StartsWith("path", "A`Tier 1")
+		:Function("path", function(path) return path == "A`Tier 1" or strsub(path, 1, 9) == "A`Tier 1`" end)
+		:OrderBy("rowNum", true)
+	assertEquals(query:JoinedString("rowNum", ","), "1,2")
+	assertTrue(query._optimization.result == OPTIMIZAITON_RESULT.INDEX)
+	query:Release()
+end
