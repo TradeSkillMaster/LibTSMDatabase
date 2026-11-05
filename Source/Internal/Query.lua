@@ -1492,7 +1492,7 @@ function DatabaseQuery.__private:_PopulateResults()
 		end
 		for i = firstRange, lastRange, rangeStep do
 			local firstIndex, lastIndex = positions:GetRange(i)
-			self:_AddResultRowsFromIndex(indexList, self._optimization.strict, firstIndex, lastIndex, isAscending, self._optimization.field)
+			self:_AddResultRowsFromIndex(indexList, self._optimization.strict, firstIndex, lastIndex, isAscending)
 		end
 	elseif self._optimization.result == OPTIMIZAITON_RESULT.NONE then
 		if firstOrderBy and self._db:_IsIndex(firstOrderBy) then
@@ -1601,7 +1601,7 @@ function DatabaseQuery.__private:_FinalizeResults()
 	end
 end
 
-function DatabaseQuery.__private:_AddResultRowsFromIndex(indexList, skipQuery, firstIndex, lastIndex, isAscending, indexField)
+function DatabaseQuery.__private:_AddResultRowsFromIndex(indexList, skipQuery, firstIndex, lastIndex, isAscending)
 	local numJoinDBs = #self._joinDBs
 	local distinct = self._distinct
 	local result = self._result
@@ -1615,7 +1615,7 @@ function DatabaseQuery.__private:_AddResultRowsFromIndex(indexList, skipQuery, f
 	end
 	for i = firstIndex, lastIndex, iterIncrement do
 		local uuid = indexList[i]
-		if includeAllRows or self:_ResultShouldIncludeRow(uuid, skipQuery, numJoinDBs, distinct, indexField) then
+		if includeAllRows or self:_ResultShouldIncludeRow(uuid, skipQuery, numJoinDBs, distinct) then
 			result[resultIndex] = uuid
 			resultIndex = resultIndex + 1
 		end
@@ -1635,7 +1635,7 @@ function DatabaseQuery.__private:_AddResultRowsCheckAll()
 	end
 end
 
-function DatabaseQuery.__private:_ResultShouldIncludeRow(uuid, skipQuery, numJoinDBs, distinct, ignoreField)
+function DatabaseQuery.__private:_ResultShouldIncludeRow(uuid, skipQuery, numJoinDBs, distinct)
 	for i = 1, numJoinDBs do
 		if self._joinTypes[i] == JOIN_TYPE.INNER then
 			local joinField = self._joinFields[i]
@@ -1646,7 +1646,7 @@ function DatabaseQuery.__private:_ResultShouldIncludeRow(uuid, skipQuery, numJoi
 		end
 	end
 	if not skipQuery then
-		if not self._rootClause:_IsTrue(uuid, ignoreField) then
+		if not self._rootClause:_IsTrue(uuid) then
 			return false
 		end
 	end
