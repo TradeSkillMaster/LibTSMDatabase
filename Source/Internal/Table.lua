@@ -25,9 +25,13 @@ local private = {
 	bulkDeleteTemp = {},
 	indexTemp = {},
 	uniqueTemp = {},
-	indexMergeTemp1 = {},
-	indexMergeTemp2 = {},
+	uuidsDescendingTemp = {},
+	rowIndexValuesTemp = {},
+	cachedIndexValuesTemp = {},
+	indexPositionsTemp = {},
+	distinctIndexValuesTemp = {},
 }
+local UNSORTABLE_INDEX_VALUE = {}
 local LIST_FIELD_ENTRY_TYPE_LOOKUP = {
 	STRING_LIST = "string",
 	NUMBER_LIST = "number",
@@ -73,7 +77,6 @@ function DatabaseTable.__private:__init(schema)
 		inUse = nil,
 		firstDataIndex = nil,
 		firstUUIDIndex = nil,
-		partitionUUIDIndex = nil,
 		fastNum = nil,
 		fastUnique = nil,
 	}
@@ -439,7 +442,6 @@ function DatabaseTable:BulkInsertStart()
 	self._bulkInsertContext.inUse = true
 	self._bulkInsertContext.firstDataIndex = nil
 	self._bulkInsertContext.firstUUIDIndex = nil
-	self._bulkInsertContext.partitionUUIDIndex = nil
 	self._bulkInsertContext.fastNum = not self._listData and self._numStoredFields or nil -- TODO: Support this?
 	if Table.Count(self._uniques) == 1 then
 		local uniqueField = next(self._uniques)
@@ -716,66 +718,30 @@ function DatabaseTable:BulkInsertNewRowFast15(v1, v2, v3, v4, v5, v6, v7, v8, v9
 	end
 end
 
----Indicates that a partition should be stored at the current number of rows in the table for optimizations.
-function DatabaseTable:BulkInsertPartition()
-	assert(self._bulkInsertContext.inUse, "Bulk insert hasn't been started")
-	assert(not self._bulkInsertContext.partitionUUIDIndex)
-	self._bulkInsertContext.partitionUUIDIndex = #self._uuids
-end
-
 ---Ends a bulk insert into the database.
 function DatabaseTable:BulkInsertEnd()
 	assert(self._bulkInsertContext.inUse)
 	if self._bulkInsertContext.firstDataIndex then
 		local numNewRows = #self._uuids - self._bulkInsertContext.firstUUIDIndex + 1
 		local newRowRatio = numNewRows / #self._uuids
-		local partitionUUIDIndex = self._bulkInsertContext.partitionUUIDIndex
-		for field, indexList in pairs(self._indexLists) do
-			local isSimpleIndex = partitionUUIDIndex and not self._smartMapReaderLookup[field]
-			local fieldOffset = self._fieldOffsetLookup[field]
-			if newRowRatio < 0.01 then
-				-- We inserted less than 1% of the rows, so just insert the new index values 1 by 1
+		if newRowRatio < 0.01 then
+			-- We inserted less than 1% of the rows, so just insert the new index values 1 by 1
+			for field in pairs(self._indexLists) do
 				for i = self._bulkInsertContext.firstUUIDIndex, #self._uuids do
 					local uuid = self._uuids[i]
 					self:_IndexListInsert(field, uuid)
 				end
-			else
-				-- Insert the new index values
-				assert(not next(private.indexTemp))
-				for i = 1, #self._uuids do
-					local uuid = self._uuids[i]
-					if isSimpleIndex then
-						private.indexTemp[uuid] = Util.ToIndexValue(self._data[self._uuidToDataOffsetLookup[uuid] + fieldOffset - 1])
-					else
-						private.indexTemp[uuid] = self:_GetRowIndexValue(uuid, field)
-					end
-					if i >= self._bulkInsertContext.firstUUIDIndex then
-						indexList[i] = uuid
-					end
-				end
-				if partitionUUIDIndex and Table.IsSortedWithValueLookup(indexList, private.indexTemp, nil, partitionUUIDIndex) then
-					-- Values up to the partition are already sorted, so just sort the new values and then merge the two portions instead of sorting the entire list
-					assert(not next(private.indexMergeTemp1) and not next(private.indexMergeTemp2))
-					local part1 = private.indexMergeTemp1
-					local part2 = private.indexMergeTemp2
-					for i = 1, #indexList do
-						if i <= partitionUUIDIndex then
-							tinsert(part1, indexList[i])
-						else
-							tinsert(part2, indexList[i])
-						end
-					end
-					Table.SortWithValueLookup(part2, private.indexTemp)
-					wipe(indexList)
-					Table.MergeSortedWithValueLookup(part1, part2, indexList, private.indexTemp)
-					Table.WipeAndDeallocate(part1)
-					Table.WipeAndDeallocate(part2)
-					assert(Table.IsSortedWithValueLookup(indexList, private.indexTemp))
-				else
-					Table.SortWithValueLookup(indexList, private.indexTemp)
-				end
-				Table.WipeAndDeallocate(private.indexTemp)
 			end
+		elseif next(self._indexLists) then
+			local uuidsDescending = self:_GetUUIDsDescending()
+			for field in pairs(self._indexLists) do
+				self:_RebuildIndexList(field, uuidsDescending)
+			end
+			Table.WipeAndDeallocate(private.uuidsDescendingTemp)
+			Table.WipeAndDeallocate(private.rowIndexValuesTemp)
+			Table.WipeAndDeallocate(private.cachedIndexValuesTemp)
+			Table.WipeAndDeallocate(private.indexPositionsTemp)
+			Table.WipeAndDeallocate(private.distinctIndexValuesTemp)
 		end
 		if self._trigramIndexField then
 			if newRowRatio < 0.01 then
@@ -1076,6 +1042,85 @@ function DatabaseTable.__private:_UpdateQueries(uuid, changeContext)
 				query:_DoUpdateCallback(uuid)
 			end
 		end
+	end
+end
+
+function DatabaseTable.__private:_GetUUIDsDescending()
+	local uuids = self._uuids
+	for i = 2, #uuids do
+		if uuids[i] > uuids[i - 1] then
+			local result = private.uuidsDescendingTemp
+			for j = 1, #uuids do
+				result[j] = uuids[j]
+			end
+			sort(result)
+			Table.Reverse(result)
+			return result
+		end
+	end
+	return uuids
+end
+
+function DatabaseTable.__private:_RebuildIndexList(field, uuidsDescending)
+	local rowValues = private.rowIndexValuesTemp
+	local cachedValues = private.cachedIndexValuesTemp
+	local positions = private.indexPositionsTemp
+	local distinctValues = private.distinctIndexValuesTemp
+	wipe(cachedValues)
+	wipe(positions)
+	wipe(distinctValues)
+	local isSmartMap = self:_IsSmartMapField(field)
+	local isNumber = self._fieldTypeLookup[field] == "number"
+	local fieldOffset = self._fieldOffsetLookup[field]
+	local data = self._data
+	local dataOffsets = self._uuidToDataOffsetLookup
+	local numRows = #uuidsDescending
+	local numDistinct = 0
+	for i = 1, numRows do
+		local value = nil
+		if isSmartMap then
+			value = self:_GetRowIndexValue(uuidsDescending[i], field)
+		else
+			value = data[dataOffsets[uuidsDescending[i]] + fieldOffset - 1]
+			if not isNumber then
+				local rawValue = value
+				value = cachedValues[rawValue]
+				if value == nil then
+					value = Util.ToIndexValue(rawValue)
+					cachedValues[rawValue] = value
+				end
+			end
+		end
+		if value == nil or value ~= value then
+			value = UNSORTABLE_INDEX_VALUE
+		end
+		rowValues[i] = value
+		local count = positions[value]
+		if count then
+			positions[value] = count + 1
+		else
+			positions[value] = 1
+			numDistinct = numDistinct + 1
+			distinctValues[numDistinct] = value
+		end
+	end
+	sort(distinctValues)
+	local nextPosition = 1
+	for i = 1, numDistinct do
+		local value = distinctValues[i]
+		local count = positions[value]
+		positions[value] = nextPosition
+		nextPosition = nextPosition + count
+	end
+	local indexList = self._indexLists[field]
+	for i = #indexList + 1, numRows do
+		indexList[i] = uuidsDescending[i]
+	end
+	for i = 1, numRows do
+		local value = rowValues[i]
+		local position = positions[value]
+		indexList[position] = uuidsDescending[i]
+		positions[value] = position + 1
 	end
 end
 
