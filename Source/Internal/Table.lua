@@ -32,6 +32,7 @@ local private = {
 	distinctIndexValuesTemp = {},
 }
 local UNSORTABLE_INDEX_VALUE = {}
+local BULK_UPDATE_INDEX_REBUILD_MIN_ROWS = 32
 local LIST_FIELD_ENTRY_TYPE_LOOKUP = {
 	STRING_LIST = "string",
 	NUMBER_LIST = "number",
@@ -276,6 +277,48 @@ function DatabaseTable:UpdateRow(uuid, updates, value)
 		end
 		self:_UpdateQueries()
 	end
+end
+
+---Updates a single field of many rows at once.
+---
+---The index on the field is rebuilt once at the end instead of being updated for every row when enough rows change.
+---@param field string The field to update
+---@param values table<number,any> The new value of the field for each row (keyed by UUID)
+function DatabaseTable:BulkUpdateRows(field, values)
+	assert(not self._bulkInsertContext.inUse)
+	local fieldOffset = self._fieldOffsetLookup[field]
+	if not fieldOffset then
+		error("Invalid field: "..tostring(field))
+	elseif self:_IsUnique(field) then
+		error("Cannot set unique field using this method")
+	elseif self:_IsListField(field) or field == self._trigramIndexField or self._smartMapInputFields[field] then
+		error("Cannot bulk update list, trigram index, or smart map input fields")
+	end
+	local numChanged = 0
+	for uuid, value in pairs(values) do
+		local dataOffset = self._uuidToDataOffsetLookup[uuid]
+		if not dataOffset then
+			error("Invalid UUID: "..tostring(uuid))
+		end
+		self:_ValidateFieldValue(field, value)
+		if self._data[dataOffset + fieldOffset - 1] ~= value then
+			numChanged = numChanged + 1
+		end
+	end
+	if numChanged == 0 then
+		return
+	elseif numChanged < BULK_UPDATE_INDEX_REBUILD_MIN_ROWS or not self:_IsIndex(field) then
+		for uuid, value in self:WithQueryUpdatesPaused(pairs(values)) do
+			self:UpdateRow(uuid, field, value)
+		end
+		return
+	end
+	for uuid, value in pairs(values) do
+		self._data[self._uuidToDataOffsetLookup[uuid] + fieldOffset - 1] = value
+	end
+	self:_RebuildIndexList(field, self:_GetUUIDsDescending())
+	private.DeallocateIndexRebuildTemp()
+	self:_UpdateQueries()
 end
 
 ---Gets fields from a row in the DB.
@@ -737,11 +780,7 @@ function DatabaseTable:BulkInsertEnd()
 			for field in pairs(self._indexLists) do
 				self:_RebuildIndexList(field, uuidsDescending)
 			end
-			Table.WipeAndDeallocate(private.uuidsDescendingTemp)
-			Table.WipeAndDeallocate(private.rowIndexValuesTemp)
-			Table.WipeAndDeallocate(private.cachedIndexValuesTemp)
-			Table.WipeAndDeallocate(private.indexPositionsTemp)
-			Table.WipeAndDeallocate(private.distinctIndexValuesTemp)
+			private.DeallocateIndexRebuildTemp()
 		end
 		if self._trigramIndexField then
 			if newRowRatio < 0.01 then
@@ -1466,6 +1505,14 @@ end
 function private.GetNextUUID()
 	private.lastUUID = private.lastUUID - 1
 	return private.lastUUID
+end
+
+function private.DeallocateIndexRebuildTemp()
+	Table.WipeAndDeallocate(private.uuidsDescendingTemp)
+	Table.WipeAndDeallocate(private.rowIndexValuesTemp)
+	Table.WipeAndDeallocate(private.cachedIndexValuesTemp)
+	Table.WipeAndDeallocate(private.indexPositionsTemp)
+	Table.WipeAndDeallocate(private.distinctIndexValuesTemp)
 end
 
 function private.IndexValueFunc(index, db, field)
