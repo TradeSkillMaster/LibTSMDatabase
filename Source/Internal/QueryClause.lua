@@ -428,18 +428,15 @@ function DatabaseQueryClause:_IsStrictIndex(indexField, indexValueMin, indexValu
 	end
 end
 
-function DatabaseQueryClause:_UsesField(field)
-	if field == self._field then
-		return true
+function DatabaseQueryClause:_GetUsedFields(result)
+	if self._field then
+		result[self._field] = true
 	end
 	if OPERATION_TYPE_LOOKUP[self._operation] == OPERATION_TYPE.SUB_CLAUSE then
 		for i = 1, #self._subClauses do
-			if self._subClauses[i]:_UsesField(field) then
-				return true
-			end
+			self._subClauses[i]:_GetUsedFields(result)
 		end
 	end
-	return false
 end
 
 function DatabaseQueryClause:_InsertSubClause(subClause)
