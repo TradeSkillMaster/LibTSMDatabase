@@ -1360,13 +1360,9 @@ function DatabaseQuery.__private:_Optimize()
 	local indexField, indexIsStrict = nil, false
 	local bestIndexDiff = math.huge
 	for _, field in self._db:_IndexOrUniqueFieldIterator() do
-		local isConstrained = false
-		if self._clauseFields[field] then
-			self._valueRanges:Wipe()
-			self._indexPositions:Wipe()
-			isConstrained = self._rootClause:_GetIndexRanges(field, self._valueRanges)
-		end
-		if not isConstrained then
+		self._valueRanges:Wipe()
+		self._indexPositions:Wipe()
+		if not self._clauseFields[field] or not self._rootClause:_GetIndexRanges(field, self._valueRanges) then
 			-- Continue
 		elseif self._valueRanges:GetNumRanges() == 0 then
 			-- The clauses can't all be satisfied, so this is as good as it gets
@@ -1601,6 +1597,8 @@ function DatabaseQuery.__private:_FinalizeResults()
 		if self._distinct then
 			self._resultDependencies[self._distinct] = true
 		end
+		wipe(self._clauseFields)
+		self._rootClause:_GetUsedFields(self._clauseFields)
 		for field in self._db:_FieldIterator() do
 			if self._clauseFields[field] then
 				self._resultDependencies[field] = true
