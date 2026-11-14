@@ -119,6 +119,7 @@ function DatabaseQuery.__private:__init()
 	self._valueRanges = IndexRanges.New() ---@type DatabaseIndexRanges<string|number>
 	self._indexPositions = IndexPositions.New()
 	self._optimizationPositions = IndexPositions.New()
+	self._clauseFields = {}
 	self._result = {
 		count = 0,
 	}
@@ -180,6 +181,7 @@ function DatabaseQuery.__private:_Release()
 	self._valueRanges:Wipe()
 	self._indexPositions:Wipe()
 	self._optimizationPositions:Wipe()
+	wipe(self._clauseFields)
 	self._autoRelease = false
 	self._autoPause = false
 	self:_WipeResults()
@@ -1352,13 +1354,15 @@ end
 function DatabaseQuery.__private:_Optimize()
 	wipe(self._optimization)
 	self._optimizationPositions:Wipe()
+	wipe(self._clauseFields)
+	self._rootClause:_GetUsedFields(self._clauseFields)
 	-- Try to find the index with the least result rows
 	local indexField, indexIsStrict = nil, false
 	local bestIndexDiff = math.huge
 	for _, field in self._db:_IndexOrUniqueFieldIterator() do
 		self._valueRanges:Wipe()
 		self._indexPositions:Wipe()
-		if not self._rootClause:_GetIndexRanges(field, self._valueRanges) then
+		if not self._clauseFields[field] or not self._rootClause:_GetIndexRanges(field, self._valueRanges) then
 			-- Continue
 		elseif self._valueRanges:GetNumRanges() == 0 then
 			-- The clauses can't all be satisfied, so this is as good as it gets
@@ -1593,8 +1597,10 @@ function DatabaseQuery.__private:_FinalizeResults()
 		if self._distinct then
 			self._resultDependencies[self._distinct] = true
 		end
+		wipe(self._clauseFields)
+		self._rootClause:_GetUsedFields(self._clauseFields)
 		for field in self._db:_FieldIterator() do
-			if self._rootClause:_UsesField(field) then
+			if self._clauseFields[field] then
 				self._resultDependencies[field] = true
 			end
 		end
