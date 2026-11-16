@@ -1513,7 +1513,7 @@ function DatabaseQuery.__private:_PopulateResults()
 		end
 	elseif self._optimization.result == OPTIMIZAITON_RESULT.TRIGRAM then
 		assert(not next(private.resultTemp))
-		self._db:_GetTrigramIndexMatchingRows(self._optimization.value1, private.resultTemp)
+		self._db:_GetTrigramIndexMatchingRows(self._optimization.value1 --[[@as string]], private.resultTemp)
 		self:_AddResultRowsFromIndex(private.resultTemp, false, 1, #private.resultTemp, true)
 		Table.WipeAndDeallocate(private.resultTemp)
 	else
